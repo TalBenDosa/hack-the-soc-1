@@ -186,3 +186,8 @@ export const generateNIDSLogs = async (count, scenario) => {
     const generator = new NIDSLogGenerator();
     return await generator.generateLogs(count, scenario);
 };
+
+export const generateNidsLog = (options = {}) => {
+    const generator = new NIDSLogGenerator();
+    return generator.generateLogs(1, options.scenario || "Network intrusion detection event");
+};
