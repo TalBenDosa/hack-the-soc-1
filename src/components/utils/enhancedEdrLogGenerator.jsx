@@ -63,7 +63,7 @@ const generateCommandLine = (fileName, malwareType) => {
     return getRandomFromArray(typeCommands);
 };
 
-export const generateEDRLog = async (options = {}) => {
+export const generateEnhancedEdrLog = async (options = {}) => {
     const { ioc = {}, details, severity, event_type, timestamp } = options;
     const eventTime = timestamp || new Date().toISOString();
 
