@@ -186,6 +186,3 @@ export const generateNIDSLogs = async (count, scenario) => {
     const generator = new NIDSLogGenerator();
     return await generator.generateLogs(count, scenario);
 };
-
-// Alias for backward compatibility
-export const generateNidsLog = generateNIDSLogs;

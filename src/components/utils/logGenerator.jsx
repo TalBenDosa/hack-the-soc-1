@@ -1,5 +1,6 @@
+
 import { LogTemplate } from '@/entities/LogTemplate';
-import { generateEDRLog } from './enhancedEdrLogGenerator';
+import { generateEDRLog, generateWindowsSecurityLog } from './enhancedEdrLogGenerator';
 import { generateFirewallLog } from './firewallLogGenerator';
 import { generateOffice365Log } from './office365LogGenerator';
 import { generateDlpLog } from './dlpLogGenerator';
@@ -369,7 +370,7 @@ export const generateRandomLog = (options = {}) => {
     case "Network IDS":
       return generateNidsLog(options);
     case "Windows Security":
-      return generateEDRLog(options); // Windows Security logs use EDR generator
+      return generateWindowsSecurityLog(options);
     case "DLP":
       return generateDlpLog(options);
     case "DC":

@@ -12,16 +12,11 @@ import {
     RefreshCw,
     ChevronDown,
     ChevronRight,
-    AlertCircle,
-    CheckCircle, // Added CheckCircle icon
-    XCircle      // Added XCircle icon
+    AlertCircle
 } from 'lucide-react';
 import { generateRealisticLogBatch, refreshTemplateCache } from '../utils/logGenerator';
 import RuleLevelFilter from './RuleLevelFilter';
 import DashboardLogDetail from './DashboardLogDetail';
-import { LogVerdict } from "@/entities/LogVerdict"; // Added LogVerdict entity
-import { User } from "@/entities/User";           // Added User entity
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Added Tooltip components
 
 const LiveEventFeed = () => {
   const [logs, setLogs] = useState([]);
@@ -30,37 +25,13 @@ const LiveEventFeed = () => {
   const [levelFilter, setLevelFilter] = useState({ operator: 'is', value: '' });
   const [expandedLogId, setExpandedLogId] = useState(null);
   const [feedError, setFeedError] = useState(null);
-  const [logVerdicts, setLogVerdicts] = useState({}); // State to store verdicts for logs
-  const [currentUser, setCurrentUser] = useState(null); // State to store the current user
 
-  // Effect to load the current user on component mount
-  useEffect(() => {
-    loadCurrentUser();
-  }, []);
-
-  // Function to load the current user
-  const loadCurrentUser = async () => {
-    try {
-      // Assuming User.me() fetches the currently logged-in user
-      const user = await User.me(); 
-      setCurrentUser(user);
-    } catch (error) {
-      console.error("Error loading user:", error);
-      // Handle user loading error, e.g., redirect to login or show message
-    }
-  };
-
-  // Function to load initial logs and their verdicts
   const loadInitialLogs = async () => {
     setFeedError(null); // Clear any previous errors
     try {
       const initialLogs = await generateRealisticLogBatch(20);
       if (Array.isArray(initialLogs)) {
         setLogs(initialLogs);
-        // After loading logs, load their verdicts
-        if (currentUser) { // Only attempt to load verdicts if user is loaded
-          await loadVerdictsForLogs(initialLogs);
-        }
       }
     } catch (error) {
       console.error("Error loading initial logs for feed:", error);
@@ -69,44 +40,15 @@ const LiveEventFeed = () => {
     }
   };
 
-  // Function to load existing verdicts for a given set of logs
-  const loadVerdictsForLogs = async (logsToLoad) => {
-    if (!currentUser || logsToLoad.length === 0) return;
-    
-    try {
-      // Fetch all verdicts for the current user
-      const allUserVerdicts = await LogVerdict.filter({ 
-        user_id: currentUser.id 
-      });
-      
-      const verdictsMap = {};
-      const logIdsInCurrentBatch = new Set(logsToLoad.map(log => log.id));
-
-      // Filter verdicts relevant to the currently displayed logs
-      allUserVerdicts.forEach(verdict => {
-        if (logIdsInCurrentBatch.has(verdict.log_id)) {
-          verdictsMap[verdict.log_id] = verdict;
-        }
-      });
-      
-      setLogVerdicts(prevVerdicts => ({ ...prevVerdicts, ...verdictsMap }));
-    } catch (error) {
-      console.error("Error loading verdicts:", error);
-      // Optionally set an error for verdict loading
-    }
-  };
-
   const refreshFeed = () => {
     refreshTemplateCache();
     loadInitialLogs();
   };
 
-  // Initial data load - now depends on currentUser
+  // Initial data load
   useEffect(() => {
-    if (currentUser) { // Load initial logs only after currentUser is available
-      loadInitialLogs();
-    }
-  }, [currentUser]); // Rerun when currentUser changes
+    loadInitialLogs();
+  }, []);
 
   // Interval for fetching new logs
   useEffect(() => {
@@ -119,10 +61,6 @@ const LiveEventFeed = () => {
               .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             return updatedLogs;
           });
-          // Load verdicts for newly fetched logs
-          if (currentUser) {
-            await loadVerdictsForLogs(newLogs);
-          }
           setFeedError(null); // Clear error if new logs are fetched successfully
         }
       } catch (error) {
@@ -132,7 +70,7 @@ const LiveEventFeed = () => {
       }
     }, 120000); // 120 seconds (2 minutes)
     return () => clearInterval(interval);
-  }, [currentUser]); // Rerun when currentUser changes
+  }, []);
 
   // Filtering logic
   useEffect(() => {
@@ -224,7 +162,7 @@ const LiveEventFeed = () => {
 
   const getLevelColor = (level) => {
     // Convert level to number if it's a string
-    const numLevel = typeof level === 'string' ? parseInt(level, 10) : level;
+    const numLevel = typeof level === 'string' ? parseInt(level) : level;
     
     if (numLevel >= 9) return "bg-red-500/40 text-red-300 border-red-500/50";
     if (numLevel >= 7) return "bg-red-500/30 text-red-300 border-red-500/40";
@@ -247,7 +185,7 @@ const LiveEventFeed = () => {
     
     // If we have a string level, try to convert or map it
     if (typeof numericLevel === 'string') {
-      const parsed = parseInt(numericLevel, 10);
+      const parsed = parseInt(numericLevel);
       if (!isNaN(parsed) && parsed >= 1 && parsed <= 10) {
         return parsed.toString();
       }
@@ -276,131 +214,6 @@ const LiveEventFeed = () => {
 
   const toggleExpand = (logId) => {
     setExpandedLogId(prevId => (prevId === logId ? null : logId));
-  };
-
-  // Function to handle setting a verdict for a log
-  const handleSetVerdict = async (logId, verdictType) => {
-    if (!currentUser) {
-      console.warn("User not logged in to set verdict.");
-      // In a real app, you might show a toast or redirect to login.
-      return;
-    }
-
-    try {
-      let newVerdictData;
-      const existingVerdict = logVerdicts[logId];
-
-      if (existingVerdict && existingVerdict.verdict === verdictType) {
-        // If the same verdict is clicked again, we can optionally remove it or do nothing.
-        // For this implementation, we'll do nothing if already set to the same.
-        // If a "clear verdict" action is needed, it would be a separate button or logic.
-        return; 
-      } else if (existingVerdict) {
-        // Update existing verdict
-        newVerdictData = await LogVerdict.update(existingVerdict.id, {
-            verdict: verdictType,
-            timestamp: new Date().toISOString()
-        });
-      } else {
-        // Create new verdict
-        newVerdictData = await LogVerdict.create({
-            log_id: logId,
-            user_id: currentUser.id,
-            verdict: verdictType,
-            timestamp: new Date().toISOString()
-        });
-      }
-      
-      // Update local state
-      setLogVerdicts(prevVerdicts => ({
-        ...prevVerdicts,
-        [logId]: newVerdictData
-      }));
-    } catch (error) {
-      console.error(`Error setting verdict for log ${logId} to ${verdictType}:`, error);
-      // Handle verdict setting error, e.g., show a toast notification
-    }
-  };
-
-  // Renders either verdict badges or buttons to set a verdict
-  const getVerdictDisplay = (logId) => {
-    const verdict = logVerdicts[logId];
-
-    if (!currentUser) {
-        return (
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-slate-700/50 text-slate-400 cursor-not-allowed">
-                            Login to Verdict
-                        </span>
-                    </TooltipTrigger>
-                    <TooltipContent className="bg-slate-800 text-white border-slate-700">
-                        <p>Log in to set a verdict</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        );
-    }
-
-    if (verdict) {
-      return verdict.verdict === "True Positive" ? (
-        <Badge className="bg-green-600/20 text-green-400 border-green-500/30 text-xs ml-2">
-          <CheckCircle className="w-3 h-3 mr-1" />
-          TP
-        </Badge>
-      ) : (
-        <Badge className="bg-orange-600/20 text-orange-400 border-orange-500/30 text-xs ml-2">
-          <XCircle className="w-3 h-3 mr-1" />
-          FP
-        </Badge>
-      );
-    } else {
-      return (
-        <div className="flex justify-center gap-1">
-          <TooltipProvider>
-              <Tooltip>
-                  <TooltipTrigger asChild>
-                      <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-green-500 hover:bg-green-500/20"
-                          onClick={(e) => {
-                              e.stopPropagation(); // Prevent row expansion
-                              handleSetVerdict(logId, "True Positive");
-                          }}
-                          disabled={!currentUser}
-                      >
-                          <CheckCircle className="h-4 w-4" />
-                      </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-slate-800 text-white border-slate-700">
-                      <p>Mark as True Positive</p>
-                  </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                  <TooltipTrigger asChild>
-                      <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-orange-500 hover:bg-orange-500/20"
-                          onClick={(e) => {
-                              e.stopPropagation(); // Prevent row expansion
-                              handleSetVerdict(logId, "False Positive");
-                          }}
-                          disabled={!currentUser}
-                      >
-                          <XCircle className="h-4 w-4" />
-                      </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-slate-800 text-white border-slate-700">
-                      <p>Mark as False Positive</p>
-                  </TooltipContent>
-              </Tooltip>
-          </TooltipProvider>
-        </div>
-      );
-    }
   };
   
   return (
@@ -446,13 +259,12 @@ const LiveEventFeed = () => {
                 <TableHead className="text-white">Description</TableHead>
                 <TableHead className="text-white text-center">Level</TableHead>
                 <TableHead className="text-white">Rule ID</TableHead>
-                <TableHead className="text-white text-center">Verdict</TableHead> {/* Added new TableHead */}
               </TableRow>
             </TableHeader>
             <TableBody>
               {feedError ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-red-400"> {/* Updated colSpan */}
+                  <TableCell colSpan={7} className="text-center py-8 text-red-400">
                     <AlertCircle className="w-8 h-8 mx-auto mb-2" />
                     <p>Error loading logs: {feedError}</p>
                     <Button
@@ -498,15 +310,12 @@ const LiveEventFeed = () => {
                     <TableCell className="text-white font-mono text-xs">
                       {log.rule?.id || log.rule_id || log.raw_log_data?.rule?.id || 'N/A'}
                     </TableCell>
-                    <TableCell className="text-center"> {/* Added new TableCell for Verdict */}
-                      {getVerdictDisplay(log.id)}
-                    </TableCell>
                   </TableRow>
 
                   {/* Expanded row with detailed information */}
                   {expandedLogId === log.id && (
                     <TableRow className="border-b-slate-800">
-                      <TableCell colSpan={8} className="bg-slate-900/50 p-0"> {/* Updated colSpan */}
+                      <TableCell colSpan={7} className="bg-slate-900/50 p-0">
                         <DashboardLogDetail
                             log={log}
                         />
@@ -516,7 +325,7 @@ const LiveEventFeed = () => {
                 </React.Fragment>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-slate-400"> {/* Updated colSpan */}
+                  <TableCell colSpan={7} className="text-center py-8 text-slate-400">
                     <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     No events match your current filters
                   </TableCell>
