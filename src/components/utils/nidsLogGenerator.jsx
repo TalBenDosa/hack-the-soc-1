@@ -186,3 +186,12 @@ export const generateNIDSLogs = async (count, scenario) => {
     const generator = new NIDSLogGenerator();
     return await generator.generateLogs(count, scenario);
 };
+
+// Main export for backward compatibility - accepts options object
+export const generateNidsLog = async (options = {}) => {
+    const count = options.count || 1;
+    const scenario = options.scenario || 'Generic network intrusion detection';
+    const generator = new NIDSLogGenerator();
+    const logs = await generator.generateLogs(count, scenario);
+    return logs[0] || logs; // Return first log for single generation
+};
