@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,8 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Save, Trash2, AlertTriangle, Edit } from 'lucide-react';
 import { Checkbox } from "@/components/ui/checkbox";
-import LogEventEditor from './LogEventEditor'; 
-import { generateMixedScenarioLogs } from '../utils/aiLogGenerators';
+import LogEventEditor from './LogEventEditor';
 
 const ALL_LEARNING_OBJECTIVES = [
     "Phishing Detection", "Malware Analysis", "Log Analysis",
