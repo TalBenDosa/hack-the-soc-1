@@ -223,3 +223,7 @@ export const generateEnhancedEdrLog = async (options = {}) => {
 
     return log;
 };
+
+// Export both for compatibility
+export const generateEDRLog = generateEnhancedEdrLog;
+export { generateEnhancedEdrLog as default };
