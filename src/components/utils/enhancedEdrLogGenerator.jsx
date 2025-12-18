@@ -223,3 +223,6 @@ export const generateEnhancedEdrLog = async (options = {}) => {
 
     return log;
 };
+
+// Alias for backward compatibility
+export const generateEDRLog = generateEnhancedEdrLog;
