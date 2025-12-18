@@ -369,7 +369,7 @@ export const generateRandomLog = (options = {}) => {
     case "Network IDS":
       return generateNidsLog(options);
     case "Windows Security":
-      return generateWindowsSecurityLog(options);
+      return generateEDRLog(options); // Windows Security logs use EDR generator
     case "DLP":
       return generateDlpLog(options);
     case "DC":
