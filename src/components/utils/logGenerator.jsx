@@ -1,6 +1,5 @@
-
 import { LogTemplate } from '@/entities/LogTemplate';
-import { generateEDRLog, generateWindowsSecurityLog } from './enhancedEdrLogGenerator';
+import { generateEDRLog } from './enhancedEdrLogGenerator';
 import { generateFirewallLog } from './firewallLogGenerator';
 import { generateOffice365Log } from './office365LogGenerator';
 import { generateDlpLog } from './dlpLogGenerator';
