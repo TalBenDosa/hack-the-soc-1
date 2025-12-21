@@ -29,9 +29,10 @@ export default function InvestigationLogs({
   };
 
   const getSeverityColor = (severity) => {
-    if (severity >= 8) return 'bg-red-600 text-white';
-    if (severity >= 5) return 'bg-orange-500 text-white';
-    return 'bg-yellow-500 text-slate-900';
+    if (severity >= 8) return 'bg-red-600 text-white border-red-500';
+    if (severity >= 5) return 'bg-orange-600 text-white border-orange-500';
+    if (severity >= 3) return 'bg-yellow-600 text-white border-yellow-500';
+    return 'bg-green-600 text-white border-green-500';
   };
 
   const getLogDescription = (log) => {
@@ -94,7 +95,7 @@ export default function InvestigationLogs({
                     </TableCell>
                     <TableCell className="text-right py-3">
                       <div className={cn(
-                        "inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm",
+                        "inline-flex items-center justify-center w-9 h-9 rounded-lg font-bold text-base border-2",
                         getSeverityColor(log.severity || log.rule?.level || 5)
                       )}>
                         {log.severity || log.rule?.level || 5}
