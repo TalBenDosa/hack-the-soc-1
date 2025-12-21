@@ -13,7 +13,25 @@ export default function InvestigationLogs({
 }) {
   
   const getSourceTypeColor = (source) => {
-    return "bg-slate-700/50 text-slate-300 border-slate-600";
+    const colors = {
+      'Azure': 'bg-blue-600/90 text-white border-blue-500',
+      'AWS': 'bg-orange-600/90 text-white border-orange-500',
+      'Office 365': 'bg-purple-600/90 text-white border-purple-500',
+      'Active Directory': 'bg-teal-600/90 text-white border-teal-500',
+      'EDR': 'bg-red-600/90 text-white border-red-500',
+      'Firewall': 'bg-yellow-600/90 text-white border-yellow-500',
+      'Network IDS': 'bg-pink-600/90 text-white border-pink-500',
+      'Windows Security': 'bg-indigo-600/90 text-white border-indigo-500',
+      'DLP': 'bg-green-600/90 text-white border-green-500',
+      'DC': 'bg-cyan-600/90 text-white border-cyan-500',
+    };
+    return colors[source] || 'bg-slate-600/90 text-white border-slate-500';
+  };
+
+  const getSeverityColor = (severity) => {
+    if (severity >= 8) return 'bg-red-600 text-white';
+    if (severity >= 5) return 'bg-orange-500 text-white';
+    return 'bg-yellow-500 text-slate-900';
   };
 
   const getLogDescription = (log) => {
@@ -26,26 +44,22 @@ export default function InvestigationLogs({
     return log.rule_description || 'Security Event';
   };
 
-  const getVerdictText = (verdict) => {
-    if (!verdict) return 'Not Set';
-    return verdict.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
   return (
-    <Card className="bg-slate-800/50 border border-slate-700 h-full">
-      <CardHeader>
-        <CardTitle className="text-white">Investigation Events</CardTitle>
+    <Card className="bg-slate-800/30 border border-slate-700/50 backdrop-blur-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-white text-lg">Investigation Events</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-b-slate-700 hover:bg-slate-800/50">
-                <TableHead className="w-10"></TableHead>
-                <TableHead className="text-slate-300">Time</TableHead>
-                <TableHead className="text-slate-300">Agent Name</TableHead>
-                <TableHead className="text-slate-300">Source</TableHead>
-                <TableHead className="text-slate-300">Description</TableHead>
+              <TableRow className="border-b border-slate-700/50 bg-slate-900/50">
+                <TableHead className="w-8 text-slate-400 font-semibold"></TableHead>
+                <TableHead className="text-slate-400 font-semibold">Time</TableHead>
+                <TableHead className="text-slate-400 font-semibold">Agent Name</TableHead>
+                <TableHead className="text-slate-400 font-semibold">Source</TableHead>
+                <TableHead className="text-slate-400 font-semibold">Description</TableHead>
+                <TableHead className="text-slate-400 font-semibold text-right">Level</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -55,38 +69,46 @@ export default function InvestigationLogs({
                   <TableRow
                     onClick={() => onSelectLog(log)}
                     className={cn(
-                      "cursor-pointer border-b-slate-800 hover:bg-slate-700/50 transition-colors",
-                      selectedLogId === log.id && "bg-slate-700"
+                      "cursor-pointer border-b border-slate-800/50 hover:bg-slate-700/30 transition-colors",
+                      selectedLogId === log.id && "bg-slate-700/40"
                     )}
                   >
-                    <TableCell>
+                    <TableCell className="py-3">
                       {selectedLogId === log.id ? (
-                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                        <ChevronDown className="w-4 h-4 text-teal-400" />
                       ) : (
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                        <ChevronRight className="w-4 h-4 text-slate-500" />
                       )}
                     </TableCell>
-                    <TableCell className="text-white font-mono text-sm">
-                      {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    <TableCell className="text-white font-mono text-sm py-3">
+                      {new Date(log.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).toUpperCase()}
                     </TableCell>
-                    <TableCell className="text-white">{log.hostname || log.agent?.name || 'Unknown'}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={`${getSourceTypeColor(log.source_type)} text-xs`}>
+                    <TableCell className="text-white font-semibold py-3">{log.hostname || log.agent?.name || 'Unknown'}</TableCell>
+                    <TableCell className="py-3">
+                      <Badge className={`${getSourceTypeColor(log.source_type)} text-xs px-3 py-1 font-medium`}>
                         {log.source_type || 'Unknown'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-white text-sm max-w-xs truncate">
+                    <TableCell className="text-white text-sm py-3">
                       {getLogDescription(log)}
+                    </TableCell>
+                    <TableCell className="text-right py-3">
+                      <div className={cn(
+                        "inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm",
+                        getSeverityColor(log.severity || log.rule?.level || 5)
+                      )}>
+                        {log.severity || log.rule?.level || 5}
+                      </div>
                     </TableCell>
                   </TableRow>
 
                   {/* Expanded log detail viewer row */}
                   {selectedLogId === log.id && (
-                    <TableRow className="border-b-slate-800">
-                      <TableCell colSpan={5} className="p-4 bg-slate-900/70">
-                        <div className="space-y-2">
-                          <h4 className="text-sm font-semibold text-white">Log Details</h4>
-                          <pre className="text-xs text-slate-300 bg-slate-800 p-3 rounded overflow-auto max-h-96">
+                    <TableRow className="border-b border-slate-800/50">
+                      <TableCell colSpan={6} className="p-6 bg-slate-900/80">
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-semibold text-teal-400 mb-3">Log Details</h4>
+                          <pre className="text-xs text-slate-300 bg-slate-800/50 p-4 rounded-lg overflow-auto max-h-96 border border-slate-700/50">
                             {JSON.stringify(log.raw_log_data || log, null, 2)}
                           </pre>
                         </div>
