@@ -434,21 +434,17 @@ Evaluate the student's written findings with maximum understanding and flexibili
           throw new Error("Missing user, scenario, or investigation data for completion.");
         }
 
-        const evaluationResults = await calculateProfessionalScore(logInvestigations, currentScenario);
+        const evaluationResults = await calculateProfessionalScore(scenarioReport, currentScenario);
         const calculatedFinalScore = evaluationResults.overall_score;
         setFinalScore(calculatedFinalScore);
         setScoreBreakdown(evaluationResults.score_breakdown);
 
-        const aggregatedOverallFeedback = Object.entries(evaluationResults.detailed_log_scores)
-            .map(([logId, details]) => `Log ${logId} (Score: ${details.total_score}%):\n${details.overall_feedback}`)
-            .join('\n\n');
-
         const aiFeedbackForDB = {
             overall_score: calculatedFinalScore,
-            strengths: [],
-            areas_for_improvement: [],
-            detailed_feedback: aggregatedOverallFeedback,
-            detailed_log_scores: evaluationResults.detailed_log_scores,
+            strengths: evaluationResults.evaluation_details.strengths || [],
+            areas_for_improvement: evaluationResults.evaluation_details.areas_for_improvement || [],
+            detailed_feedback: evaluationResults.evaluation_details.overall_feedback,
+            evaluation_details: evaluationResults.evaluation_details,
             score_breakdown: evaluationResults.score_breakdown
         };
 
@@ -460,7 +456,7 @@ Evaluate the student's written findings with maximum understanding and flexibili
             ai_feedback: aiFeedbackForDB,
             completion_percentage: 100,
             status: 'completed',
-            findings: { log_investigations_details: logInvestigations }
+            findings: { scenario_report: scenarioReport }
         });
         setInvestigation(updatedInvestigation);
 
@@ -508,7 +504,7 @@ Evaluate the student's written findings with maximum understanding and flexibili
               predicted_success_rate: Math.max(20, calculatedFinalScore - 10)
             },
             submission_content: {
-              findings: logInvestigations,
+              scenario_report: scenarioReport,
               final_score: calculatedFinalScore,
               investigation_data: updatedInvestigation
             }
@@ -570,8 +566,8 @@ Evaluate the student's written findings with maximum understanding and flexibili
     );
   }
 
-  const { completed: completedLogsCount, total: totalLogs } = getLogsProgress();
-  const allLogsInvestigated = totalLogs > 0 && completedLogsCount === totalLogs;
+  const { completed: completedItems, total: totalItems } = getInvestigationProgress();
+  const investigationComplete = completedItems >= 3;
 
   if (showCertificate) {
     return (
@@ -648,35 +644,89 @@ Evaluate the student's written findings with maximum understanding and flexibili
             </CardContent>
         </Card>
 
-        <div className="mb-6">
-            <InvestigationLogs
-              logs={currentScenario.initial_events}
-              onSelectLog={handleSelectLog}
-              selectedLogId={selectedLog ? selectedLog.id : null}
-              verdicts={Object.entries(logInvestigations).reduce((acc, [key, value]) => {
-                acc[key] = value.verdict;
-                return acc;
-              }, {})}
-              logInvestigations={logInvestigations}
-              onLogInvestigationUpdate={handleLogInvestigationUpdate}
-              addInvestigationStep={addInvestigationStep}
-              onSetVerdict={handleSetVerdict}
-              selectedLog={selectedLog}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-            />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div>
+                <InvestigationLogs
+                  logs={currentScenario.initial_events}
+                  onSelectLog={handleSelectLog}
+                  selectedLogId={selectedLog ? selectedLog.id : null}
+                />
+            </div>
+            <div>
+                <Card className="bg-slate-800/50 border-slate-700 h-full">
+                    <CardHeader>
+                        <CardTitle className="text-white">Scenario Investigation Report</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Tabs defaultValue="narrative" className="w-full">
+                            <TabsList className="grid w-full grid-cols-4 bg-slate-900/70 mb-4">
+                                <TabsTrigger value="narrative">Narrative</TabsTrigger>
+                                <TabsTrigger value="findings">Findings</TabsTrigger>
+                                <TabsTrigger value="iocs">IOCs</TabsTrigger>
+                                <TabsTrigger value="verdict">Verdict</TabsTrigger>
+                            </TabsList>
+                            
+                            <TabsContent value="narrative">
+                                <h4 className="text-sm font-semibold text-white mb-2">Attack Narrative</h4>
+                                <p className="text-xs text-slate-400 mb-3">Tell the complete story of the attack from beginning to end</p>
+                                <Textarea
+                                    placeholder="Describe the full attack chain, from initial access to final impact..."
+                                    className="bg-slate-700 border-slate-600 text-white min-h-[200px]"
+                                    value={scenarioReport.attack_narrative}
+                                    onChange={(e) => handleReportUpdate('attack_narrative', e.target.value)}
+                                />
+                            </TabsContent>
+                            
+                            <TabsContent value="findings">
+                                <h4 className="text-sm font-semibold text-white mb-2">Technical Findings</h4>
+                                <p className="text-xs text-slate-400 mb-3">Document your technical analysis and key evidence</p>
+                                <Textarea
+                                    placeholder="What did you discover? What evidence supports your conclusions?"
+                                    className="bg-slate-700 border-slate-600 text-white min-h-[200px]"
+                                    value={scenarioReport.scenario_findings}
+                                    onChange={(e) => handleReportUpdate('scenario_findings', e.target.value)}
+                                />
+                            </TabsContent>
+                            
+                            <TabsContent value="iocs">
+                                <IOCTracker 
+                                    iocs={scenarioReport.iocs || []}
+                                    onUpdate={(newIocs) => handleReportUpdate('iocs', newIocs)}
+                                />
+                            </TabsContent>
+                            
+                            <TabsContent value="verdict">
+                                <h4 className="text-sm font-semibold text-white mb-2">Final Verdict</h4>
+                                <p className="text-xs text-slate-400 mb-3">Based on your complete investigation, classify this scenario</p>
+                                <div className="flex flex-col gap-3">
+                                    {['True Positive', 'False Positive', 'Escalate to TIER 2'].map(v => (
+                                        <Button 
+                                            key={v}
+                                            variant={scenarioReport.final_verdict === v ? 'default' : 'outline'}
+                                            onClick={() => handleReportUpdate('final_verdict', v)}
+                                            className={`w-full ${scenarioReport.final_verdict === v ? 'bg-teal-600 hover:bg-teal-700' : 'border-slate-600 hover:bg-slate-700'}`}
+                                        >
+                                            {v}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </TabsContent>
+                        </Tabs>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
         
         <div className="mt-6 mb-6 p-6 bg-slate-800/50 border border-slate-700 rounded-lg flex flex-col items-center text-center">
             <Trophy className="w-8 h-8 text-yellow-400 mb-3" />
             <h3 className="text-xl font-bold text-white mb-2">Complete Investigation</h3>
             <p className="text-slate-400 mb-4">
-                You have investigated <span className="font-bold text-teal-400">{completedLogsCount}</span> out of <span className="font-bold text-white">{totalLogs}</span> logs.
+                Investigation progress: <span className="font-bold text-teal-400">{completedItems}</span> out of <span className="font-bold text-white">{totalItems}</span> sections completed.
             </p>
-            <Progress value={totalLogs > 0 ? (completedLogsCount / totalLogs) * 100 : 0} className="w-full max-w-sm mb-4 custom-progress-bar" />
+            <Progress value={totalItems > 0 ? (completedItems / totalItems) * 100 : 0} className="w-full max-w-sm mb-4 custom-progress-bar" />
             <Button 
               onClick={handleCompleteEntireInvestigation}
-              disabled={!allLogsInvestigated || isGeneratingFeedback}
+              disabled={!investigationComplete || isGeneratingFeedback}
               className="bg-gradient-to-r from-purple-600 to-teal-600 text-white disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed"
             >
               {isGeneratingFeedback ? (
@@ -688,9 +738,9 @@ Evaluate the student's written findings with maximum understanding and flexibili
                 'Finalize & Evaluate Investigation'
               )}
             </Button>
-            {!allLogsInvestigated && (
+            {!investigationComplete && (
               <p className="text-xs text-slate-500 mt-2">
-                You must assign a verdict to all logs to complete the investigation.
+                Complete at least 3 sections (narrative, findings, verdict) to finalize the investigation.
               </p>
             )}
         </div>
