@@ -108,73 +108,98 @@ export default function InvestigationLogs({
                   {selectedLogId === log.id && (
                     <TableRow className="border-b border-slate-800/50">
                       <TableCell colSpan={6} className="p-6 bg-slate-900/80">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-sm font-semibold text-teal-400">Log Details</h4>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant={viewMode === 'formatted' ? 'default' : 'outline'}
-                                onClick={() => setViewMode('formatted')}
-                                className={viewMode === 'formatted' ? 'bg-teal-600 hover:bg-teal-700' : 'border-slate-600'}
-                              >
-                                <FileText className="w-4 h-4 mr-1" />
-                                Formatted
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant={viewMode === 'raw' ? 'default' : 'outline'}
-                                onClick={() => setViewMode('raw')}
-                                className={viewMode === 'raw' ? 'bg-teal-600 hover:bg-teal-700' : 'border-slate-600'}
-                              >
-                                <Code className="w-4 h-4 mr-1" />
-                                Raw Log
-                              </Button>
+                        <div className="space-y-4">
+                          {/* Header */}
+                          <div className="flex items-center gap-2 text-teal-400 text-base font-semibold">
+                            <div className="w-1 h-6 bg-teal-400 rounded-full"></div>
+                            Log Analysis
+                          </div>
+
+                          {/* Basic Information Section */}
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-slate-300 text-sm">
+                              <div className="w-1 h-5 bg-slate-500 rounded-full"></div>
+                              Basic Information
+                            </div>
+                            <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
+                              <div className="grid grid-cols-[180px_1fr] gap-3 text-sm">
+                                <div className="text-slate-400">Rule Description:</div>
+                                <div className="text-white">{getLogDescription(log)}</div>
+                                
+                                <div className="text-slate-400">Source Type:</div>
+                                <div className="text-white">{log.source_type}</div>
+                                
+                                <div className="text-slate-400">Timestamp:</div>
+                                <div className="text-white font-mono">{log.timestamp}</div>
+                                
+                                <div className="text-slate-400">Severity:</div>
+                                <div className="text-white">{log.severity || log.rule?.level || 'N/A'}</div>
+                                
+                                {log.username && (
+                                  <>
+                                    <div className="text-slate-400">Username:</div>
+                                    <div className="text-white">{log.username}</div>
+                                  </>
+                                )}
+                                
+                                <div className="text-slate-400">Hostname:</div>
+                                <div className="text-white">{log.hostname || log.agent?.name || 'N/A'}</div>
+                                
+                                {log.ip_address && (
+                                  <>
+                                    <div className="text-slate-400">Ip Address:</div>
+                                    <div className="text-white font-mono">{log.ip_address}</div>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          
-                          {viewMode === 'raw' ? (
-                            <pre className="text-xs text-slate-300 bg-slate-800/50 p-4 rounded-lg overflow-auto max-h-96 border border-slate-700/50 font-mono">
-                              {JSON.stringify(log.raw_log_data || log, null, 2)}
-                            </pre>
-                          ) : (
-                            <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50 space-y-3 max-h-96 overflow-auto">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <span className="text-xs text-slate-400">Timestamp:</span>
-                                  <p className="text-sm text-white font-mono">{log.timestamp}</p>
-                                </div>
-                                <div>
-                                  <span className="text-xs text-slate-400">Source:</span>
-                                  <p className="text-sm text-white">{log.source_type}</p>
-                                </div>
-                                <div>
-                                  <span className="text-xs text-slate-400">Agent:</span>
-                                  <p className="text-sm text-white">{log.hostname || log.agent?.name}</p>
-                                </div>
-                                <div>
-                                  <span className="text-xs text-slate-400">Severity:</span>
-                                  <p className="text-sm text-white">{log.severity || log.rule?.level || 'N/A'}</p>
-                                </div>
+
+                          {/* Detailed Log Data Section */}
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-slate-300 text-sm">
+                                <div className="w-1 h-5 bg-slate-500 rounded-full"></div>
+                                Detailed Log Data
                               </div>
-                              <div>
-                                <span className="text-xs text-slate-400">Description:</span>
-                                <p className="text-sm text-white mt-1">{getLogDescription(log)}</p>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-400">Raw JSON</span>
+                                <button
+                                  onClick={() => setViewMode(viewMode === 'raw' ? 'formatted' : 'raw')}
+                                  className={cn(
+                                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                                    viewMode === 'raw' ? 'bg-teal-600' : 'bg-slate-700'
+                                  )}
+                                >
+                                  <span
+                                    className={cn(
+                                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                      viewMode === 'raw' ? 'translate-x-6' : 'translate-x-1'
+                                    )}
+                                  />
+                                </button>
                               </div>
-                              {log.username && (
-                                <div>
-                                  <span className="text-xs text-slate-400">Username:</span>
-                                  <p className="text-sm text-white">{log.username}</p>
-                                </div>
-                              )}
-                              {log.ip_address && (
-                                <div>
-                                  <span className="text-xs text-slate-400">IP Address:</span>
-                                  <p className="text-sm text-white font-mono">{log.ip_address}</p>
-                                </div>
-                              )}
                             </div>
-                          )}
+                            
+                            {viewMode === 'raw' ? (
+                              <pre className="text-xs text-slate-300 bg-slate-800/50 p-4 rounded-lg overflow-auto max-h-96 border border-slate-700/50 font-mono">
+                                {JSON.stringify(log.raw_log_data || log, null, 2)}
+                              </pre>
+                            ) : (
+                              <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50 max-h-96 overflow-auto">
+                                <div className="grid grid-cols-[200px_1fr] gap-3 text-sm font-mono">
+                                  {Object.entries(log.raw_log_data || log).map(([key, value]) => (
+                                    <React.Fragment key={key}>
+                                      <div className="text-slate-400">{key}:</div>
+                                      <div className="text-white break-all">
+                                        {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                      </div>
+                                    </React.Fragment>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                     </TableRow>
