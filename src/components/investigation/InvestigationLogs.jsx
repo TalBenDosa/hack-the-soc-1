@@ -61,7 +61,6 @@ export default function InvestigationLogs({
                 <TableHead className="text-slate-400 font-semibold">Agent Name</TableHead>
                 <TableHead className="text-slate-400 font-semibold">Source</TableHead>
                 <TableHead className="text-slate-400 font-semibold">Description</TableHead>
-                <TableHead className="text-slate-400 font-semibold text-right">Level</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -94,20 +93,12 @@ export default function InvestigationLogs({
                     <TableCell className="text-white text-sm py-3">
                       {getLogDescription(log)}
                     </TableCell>
-                    <TableCell className="text-right py-3">
-                      <div className={cn(
-                        "inline-flex items-center justify-center w-9 h-9 rounded-lg font-bold text-base border-2",
-                        getSeverityColor(log.severity || log.rule?.level || 5)
-                      )}>
-                        {log.severity || log.rule?.level || 5}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                    </TableRow>
 
                   {/* Expanded log detail viewer row */}
                   {selectedLogId === log.id && (
                     <TableRow className="border-b border-slate-800/50">
-                      <TableCell colSpan={6} className="p-6 bg-slate-900/80">
+                      <TableCell colSpan={5} className="p-6 bg-slate-900/80">
                         <div className="space-y-4">
                           {/* Header */}
                           <div className="flex items-center gap-2 text-teal-400 text-base font-semibold">
