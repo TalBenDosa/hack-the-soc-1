@@ -564,25 +564,29 @@ Please respond with this exact JSON structure:
                 <ChevronLeft className="w-4 h-4" />
                 Back to Scenarios
             </Link>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-white">{currentScenario.title}</h1>
-                <p className="text-slate-400 mt-1">{currentScenario.description}</p>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex-1">
+                  <h1 className="text-2xl md:text-3xl font-bold text-white">{currentScenario.title}</h1>
+                </div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 text-sm self-start md:self-center">
+                    <Badge variant="outline" className={`${
+                        currentScenario.difficulty === 'Easy' ? 'border-green-500/50 text-green-400'
+                        : currentScenario.difficulty === 'Medium' ? 'border-yellow-500/50 text-yellow-400'
+                        : currentScenario.difficulty === 'Hard' ? 'border-red-500/50 text-red-400'
+                        : 'border-purple-500/50 text-purple-400'
+                    } text-sm`}>
+                        {currentScenario.difficulty}
+                    </Badge>
+                    <div className="flex items-center gap-2 text-slate-300">
+                        <Clock className="w-4 h-4 text-teal-400"/>
+                        <span>Time: {formatTime(timer)}</span>
+                    </div>
+                    <SaveStatusIndicator />
+                </div>
               </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 text-sm self-start md:self-center">
-                  <Badge variant="outline" className={`${
-                      currentScenario.difficulty === 'Easy' ? 'border-green-500/50 text-green-400'
-                      : currentScenario.difficulty === 'Medium' ? 'border-yellow-500/50 text-yellow-400'
-                      : currentScenario.difficulty === 'Hard' ? 'border-red-500/50 text-red-400'
-                      : 'border-purple-500/50 text-purple-400'
-                  } text-sm`}>
-                      {currentScenario.difficulty}
-                  </Badge>
-                  <div className="flex items-center gap-2 text-slate-300">
-                      <Clock className="w-4 h-4 text-teal-400"/>
-                      <span>Time: {formatTime(timer)}</span>
-                  </div>
-                  <SaveStatusIndicator />
+              <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
+                <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">{currentScenario.description}</p>
               </div>
             </div>
         </div>
