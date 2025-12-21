@@ -347,64 +347,16 @@ Evaluate the student's written findings with maximum understanding and flexibili
 
 - **Response Actions (15%):** Did they suggest reasonable next steps? Accept informal suggestions like "block the user", "check other computers", "tell management", "run antivirus". Focus on logical thinking.
 
-**SCORING GUIDANCE FOR FINDINGS:**
-- 90-100: Excellent understanding with all key points covered, regardless of language style
-- 80-89: Good understanding with most points covered, minor gaps acceptable
-- 70-79: Adequate understanding with some key points covered
-- 60-69: Basic understanding but missing important elements
-- 50-59: Limited understanding with significant gaps
-- 10-49: Very poor understanding or mostly irrelevant content
-- 0-9: Garbage, nonsensical, or completely irrelevant content
-
-**3. VERDICT EVALUATION (45% of score):**
-First determine the CORRECT verdict for this log, then compare with student's choice:
-
-For malicious/threatening events: Usually "True Positive" or "Escalate to TIER 2"
-For false alarms/benign events: Usually "False Positive"
-For unclear/complex situations: Usually "Escalate to TIER 2"
-
-**VERDICT SCORING:**
-- Perfect match: 100 points
-- Close match (e.g., True Positive vs Escalate): 85 points  
-- Reasonable alternative: 70 points
-- Poor choice but some logic: 40 points
-- Completely wrong: 10 points
-
-**4. IOC ASSESSMENT (2.5% of score):**
-Identify expected IOCs and compare with student's entries.
-
-**5. TIMELINE ASSESSMENT (2.5% of score):**
-Evaluate quality and relevance of timeline entries.
-
-**IMPORTANT:** For the detailed report, provide comprehensive feedback that helps the student learn and improve. Be specific about what they did well and exactly what they can improve. If content was garbage/nonsensical, explain why proper analysis is essential.
-
-Please respond with this exact JSON structure:
-{
-  "findings_score": [0-100 number],
-  "findings_feedback": "[Detailed explanation focusing on what they did well and areas for improvement - be specific and constructive]",
-  "suggested_findings": "[Provide a professional example of how the findings should be written for this specific log - make this detailed and realistic]",
-  "verdict_score": [0-100 number], 
-  "correct_verdict": "[True Positive/False Positive/Escalate to TIER 2]",
-  "verdict_feedback": "[Detailed explanation of why the correct verdict is appropriate for this specific log, and analysis of the student's choice]",
-  "expected_iocs": [
-    {"type": "ip", "value": "example", "description": "why this IOC is important for this specific log"},
-    {"type": "domain", "value": "example", "description": "why this IOC matters"}
-  ],
-  "ioc_score": [0-100 number],
-  "timeline_score": [0-100 number],
-  "timeline_feedback": "[Specific feedback about timeline events for this log]",
-  "overall_feedback": "[Encouraging overall assessment highlighting strengths and specific areas for growth]",
-  "total_score": [calculated total score]
-}`,
+},
           response_json_schema: {
             type: "object",
             properties: {
-              findings_score: { type: "number" },
-              findings_feedback: { type: "string" },
-              suggested_findings: { type: "string" },
-              verdict_score: { type: "number" },
-              correct_verdict: { type: "string" },
-              verdict_feedback: { type: "string" },
+              narrative_score: { type: "number" },
+              narrative_feedback: { type: "string" },
+              technical_analysis_score: { type: "number" },
+              technical_feedback: { type: "string" },
+              ioc_score: { type: "number" },
+              ioc_feedback: { type: "string" },
               expected_iocs: {
                 type: "array",
                 items: {
@@ -413,76 +365,65 @@ Please respond with this exact JSON structure:
                     type: { type: "string" },
                     value: { type: "string" },
                     description: { type: "string" }
-                  },
-                  required: ["type", "value"] 
+                  }
                 }
               },
-              ioc_score: { type: "number" },
-              timeline_score: { type: "number" },
-              timeline_feedback: { type: "string" },
+              verdict_score: { type: "number" },
+              correct_verdict: { type: "string" },
+              verdict_feedback: { type: "string" },
+              completeness_score: { type: "number" },
               overall_feedback: { type: "string" },
+              strengths: { type: "array", items: { type: "string" } },
+              areas_for_improvement: { type: "array", items: { type: "string" } },
+              suggested_approach: { type: "string" },
               total_score: { type: "number" }
-            },
-            required: ["findings_score", "findings_feedback", "suggested_findings", "verdict_score", "correct_verdict", "verdict_feedback", "expected_iocs", "ioc_score", "timeline_score", "timeline_feedback", "overall_feedback", "total_score"]
+            }
           }
         });
 
-        const logScore = (evaluationResult.findings_score * 0.50) + 
-                         (evaluationResult.verdict_score * 0.45) + 
-                         (evaluationResult.ioc_score * 0.025) + 
-                         (evaluationResult.timeline_score * 0.025);
+        const totalScore = (
+          (evaluationResult.narrative_score * 0.30) + 
+          (evaluationResult.technical_analysis_score * 0.25) + 
+          (evaluationResult.ioc_score * 0.20) + 
+          (evaluationResult.verdict_score * 0.20) + 
+          (evaluationResult.completeness_score * 0.05)
+        );
 
-        evaluationResult.total_score = Math.round(logScore);
-        scores.push(evaluationResult.total_score);
-        detailedScores[logId] = evaluationResult;
-
+        return {
+          overall_score: Math.round(totalScore),
+          evaluation_details: evaluationResult,
+          score_breakdown: {
+            "Attack Narrative": { score: evaluationResult.narrative_score, weight: "30%" },
+            "Technical Analysis": { score: evaluationResult.technical_analysis_score, weight: "25%" },
+            "IOC Identification": { score: evaluationResult.ioc_score, weight: "20%" },
+            "Final Verdict": { score: evaluationResult.verdict_score, weight: "20%" },
+            "Completeness": { score: evaluationResult.completeness_score, weight: "5%" }
+          }
+        };
       } catch (error) {
-        console.error(`Error evaluating log ${logId}:`, error);
-        scores.push(0);
-        detailedScores[logId] = {
-          findings_score: 0,
-          findings_feedback: "Unable to evaluate due to system error",
-          suggested_findings: "Error during generation. Please try again.",
-          verdict_score: 0,
-          correct_verdict: "Unable to determine",
-          verdict_feedback: "System error occurred during evaluation",
-          expected_iocs: [],
-          ioc_score: 0,
-          timeline_score: 0,
-          timeline_feedback: "Unable to evaluate timeline",
-          overall_feedback: "Please try again - system error occurred",
-          total_score: 0
+        console.error("Error evaluating scenario:", error);
+        return {
+          overall_score: 0,
+          evaluation_details: {
+            narrative_score: 0,
+            narrative_feedback: "System error during evaluation",
+            technical_analysis_score: 0,
+            technical_feedback: "System error during evaluation",
+            ioc_score: 0,
+            ioc_feedback: "System error during evaluation",
+            verdict_score: 0,
+            correct_verdict: "Unable to determine",
+            verdict_feedback: "System error during evaluation",
+            completeness_score: 0,
+            overall_feedback: "An error occurred. Please try again.",
+            strengths: [],
+            areas_for_improvement: [],
+            suggested_approach: "",
+            total_score: 0
+          },
+          score_breakdown: {}
         };
       }
-    }
-
-    const overallScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-
-    const scoreBreakdown = {
-      "Findings Analysis": {
-        average: Object.values(detailedScores).reduce((sum, score) => sum + (score.findings_score || 0), 0) / Object.keys(detailedScores).length,
-        count: Object.keys(detailedScores).length
-      },
-      "Verdict Decisions": {
-        average: Object.values(detailedScores).reduce((sum, score) => sum + (score.verdict_score || 0), 0) / Object.keys(detailedScores).length,
-        count: Object.keys(detailedScores).length
-      },
-      "IOC Detection": {
-        average: Object.values(detailedScores).reduce((sum, score) => sum + (score.ioc_score || 0), 0) / Object.keys(detailedScores).length,
-        count: Object.keys(detailedScores).length
-      },
-      "Timeline Events": {
-        average: Object.values(detailedScores).reduce((sum, score) => sum + (score.timeline_score || 0), 0) / Object.keys(detailedScores).length,
-        count: Object.keys(detailedScores).length
-      }
-    };
-
-    return {
-      overall_score: Math.round(overallScore),
-      detailed_log_scores: detailedScores,
-      score_breakdown: scoreBreakdown,
-      total_logs_evaluated: scores.length
-    };
   };
   
   const handleCompleteEntireInvestigation = async () => {
