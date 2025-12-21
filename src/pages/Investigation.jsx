@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -38,7 +37,13 @@ export default function InvestigationPage() {
   const [investigationSteps, setInvestigationSteps] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [timer, setTimer] = useState(0);
-  const [logInvestigations, setLogInvestigations] = useState({});
+  const [scenarioReport, setScenarioReport] = useState({
+    scenario_findings: '',
+    attack_narrative: '',
+    iocs: [],
+    timeline_events: [],
+    final_verdict: ''
+  });
   const [sessionId, setSessionId] = useState(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [aiFeedback, setAiFeedback] = useState(null);
@@ -49,7 +54,6 @@ export default function InvestigationPage() {
   const [saveStatus, setSaveStatus] = useState('idle');
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedLog, setSelectedLog] = useState(null);
-  const [activeTab, setActiveTab] = useState("analysis");
 
   const debounceTimeout = useRef(null);
   const timerIntervalRef = useRef(null);
@@ -123,8 +127,8 @@ export default function InvestigationPage() {
           currentInvestigation = existingInvestigations[0];
           setInvestigation(currentInvestigation);
           setSessionId(currentInvestigation.session_id);
-          if (currentInvestigation.findings && currentInvestigation.findings.log_investigations_details) {
-            setLogInvestigations(currentInvestigation.findings.log_investigations_details);
+          if (currentInvestigation.findings && currentInvestigation.findings.scenario_report) {
+            setScenarioReport(currentInvestigation.findings.scenario_report);
           }
           addInvestigationStep({
             action_type: "Investigation Resumed",
@@ -178,25 +182,28 @@ export default function InvestigationPage() {
     return `${h}:${m}:${s}`;
   };
 
-  const getLogsProgress = useCallback((logsToEvaluate) => {
-    const currentLogs = logsToEvaluate || logInvestigations;
-    const totalLogs = currentScenario?.initial_events?.length || 0;
-    const completedCount = Object.values(currentLogs).filter(inv => !!inv.verdict).length;
-    return { completed: completedCount, total: totalLogs };
-  }, [logInvestigations, currentScenario]);
+  const getInvestigationProgress = useCallback(() => {
+    const hasFindings = scenarioReport.scenario_findings && scenarioReport.scenario_findings.trim().length > 50;
+    const hasNarrative = scenarioReport.attack_narrative && scenarioReport.attack_narrative.trim().length > 50;
+    const hasVerdict = !!scenarioReport.final_verdict;
+    const hasIOCs = scenarioReport.iocs && scenarioReport.iocs.length > 0;
+    
+    const completedItems = [hasFindings, hasNarrative, hasVerdict, hasIOCs].filter(Boolean).length;
+    return { completed: completedItems, total: 4 };
+  }, [scenarioReport]);
 
-  const autoSaveProgress = useCallback(async (currentLogInvestigations) => {
+  const autoSaveProgress = useCallback(async (currentReport) => {
     if (!investigation) {
       setSaveStatus('error');
       return;
     }
     setSaveStatus('saving');
     try {
-        const { total, completed } = getLogsProgress(currentLogInvestigations);
+        const { total, completed } = getInvestigationProgress();
         const completionPercentage = total > 0 ? (completed / total) * 100 : 0;
 
         await Investigation.update(investigation.id, {
-            findings: { log_investigations_details: currentLogInvestigations },
+            findings: { scenario_report: currentReport },
             completion_percentage: completionPercentage,
         });
         setSaveStatus('saved');
@@ -204,46 +211,99 @@ export default function InvestigationPage() {
         console.error("Auto-save failed:", error);
         setSaveStatus('error');
     }
-  }, [investigation, getLogsProgress]);
+  }, [investigation, getInvestigationProgress]);
 
-  const handleLogInvestigationUpdate = (logId, updatedData) => {
-    const newLogInvestigations = {
-        ...logInvestigations,
-        [logId]: {
-            ...(logInvestigations[logId] || {}),
-            ...updatedData
-        }
+  const handleReportUpdate = (field, value) => {
+    const newReport = {
+        ...scenarioReport,
+        [field]: value
     };
-    setLogInvestigations(newLogInvestigations);
+    setScenarioReport(newReport);
     
     if (debounceTimeout.current) {
         clearTimeout(debounceTimeout.current);
     }
     setSaveStatus('idle');
     debounceTimeout.current = setTimeout(() => {
-        autoSaveProgress(newLogInvestigations);
+        autoSaveProgress(newReport);
     }, 2000);
   };
 
-  const handleSetVerdict = (logId, verdict) => {
-    handleLogInvestigationUpdate(logId, { verdict: verdict });
-    addInvestigationStep({
-      action_type: "Verdict Set",
-      details: `Verdict for log ${logId} set to: ${verdict}`,
-    });
-  };
-
-  const calculateProfessionalScore = async (finalLogInvestigations, scenario) => {
-    const scores = [];
-    const detailedScores = {};
-    
-    for (const [logId, investigationData] of Object.entries(finalLogInvestigations)) {
-      const log = scenario.initial_events.find(e => e.id === logId);
-      if (!log || !investigationData) continue;
-
-      try {
+  const calculateProfessionalScore = async (report, scenario) => {
+    try {
         const evaluationResult = await InvokeLLM({
-          prompt: `As an expert SOC analyst trainer, evaluate this student's investigation of a security log. Your evaluation should be understanding and forgiving of informal language, slang, typos, and non-technical phrasing while focusing on the core understanding and analytical thinking.
+          prompt: `As an expert SOC analyst trainer, evaluate this student's complete investigation of a security scenario.
+
+**SCENARIO DETAILS:**
+Title: ${scenario.title}
+Description: ${scenario.description}
+Difficulty: ${scenario.difficulty}
+Total Logs: ${scenario.initial_events?.length || 0}
+
+**STUDENT'S COMPLETE INVESTIGATION:**
+
+**Attack Narrative:**
+"${report.attack_narrative || 'No narrative provided'}"
+
+**Overall Findings:**
+"${report.scenario_findings || 'No findings provided'}"
+
+**Final Verdict:** ${report.final_verdict || 'No verdict provided'}
+
+**IOCs Identified:** ${report.iocs?.length || 0} IOCs
+${report.iocs?.map(ioc => `- ${ioc.type}: ${ioc.value}`).join('\n') || 'None'}
+
+**Timeline Events:** ${report.timeline_events?.length || 0} events
+
+━━━━━━━━━━━━━━━━━━━━━━
+**EVALUATION CRITERIA:**
+━━━━━━━━━━━━━━━━━━━━━━
+
+**1. Attack Narrative Understanding (30%):**
+- Did they correctly identify the attack type and sequence?
+- Did they understand the full attack chain from initial access to final impact?
+- Did they correctly correlate events across multiple logs?
+
+**2. Technical Analysis (25%):**
+- Did they identify key technical indicators?
+- Did they understand the significance of the evidence?
+- Did they demonstrate proper SOC analysis methodology?
+
+**3. IOC Identification (20%):**
+- Did they extract all critical IOCs (IPs, domains, hashes, usernames)?
+- Did they prioritize IOCs correctly?
+- Did they understand the significance of each IOC?
+
+**4. Final Verdict (20%):**
+- Is the verdict appropriate for the scenario?
+- Did they justify their verdict properly?
+- Did they demonstrate sound judgment?
+
+**5. Completeness (5%):**
+- Did they address all aspects of the scenario?
+- Is the investigation thorough and well-documented?
+
+Please respond with this exact JSON structure:
+{
+  "narrative_score": [0-100 number],
+  "narrative_feedback": "[Detailed feedback on attack narrative]",
+  "technical_analysis_score": [0-100 number],
+  "technical_feedback": "[Detailed feedback on technical analysis]",
+  "ioc_score": [0-100 number],
+  "ioc_feedback": "[Feedback on IOC identification]",
+  "expected_iocs": [
+    {"type": "ip", "value": "example", "description": "why this IOC matters"}
+  ],
+  "verdict_score": [0-100 number],
+  "correct_verdict": "[True Positive/False Positive/Escalate to TIER 2]",
+  "verdict_feedback": "[Detailed explanation of why verdict is correct/incorrect]",
+  "completeness_score": [0-100 number],
+  "overall_feedback": "[Comprehensive feedback on entire investigation]",
+  "strengths": ["strength 1", "strength 2"],
+  "areas_for_improvement": ["area 1", "area 2"],
+  "suggested_approach": "[How a professional SOC analyst would have approached this]",
+  "total_score": [calculated total score 0-100]
+} Your evaluation should be understanding and forgiving of informal language, slang, typos, and non-technical phrasing while focusing on the core understanding and analytical thinking.
 
 **CRITICAL INSTRUCTION: GARBAGE DETECTION**
 Before evaluating, first determine if the student's findings contain meaningful content:
