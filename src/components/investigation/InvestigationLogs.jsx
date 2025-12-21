@@ -1,16 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChevronRight, ChevronDown, Code, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
-import LogAnalysisViewer from "./LogAnalysisViewer";
 
 export default function InvestigationLogs({
   logs,
   onSelectLog,
   selectedLogId
 }) {
+  const [viewMode, setViewMode] = useState('formatted'); // 'raw' or 'formatted'
   
   const getSourceTypeColor = (source) => {
     const colors = {
@@ -108,10 +109,72 @@ export default function InvestigationLogs({
                     <TableRow className="border-b border-slate-800/50">
                       <TableCell colSpan={6} className="p-6 bg-slate-900/80">
                         <div className="space-y-3">
-                          <h4 className="text-sm font-semibold text-teal-400 mb-3">Log Details</h4>
-                          <pre className="text-xs text-slate-300 bg-slate-800/50 p-4 rounded-lg overflow-auto max-h-96 border border-slate-700/50">
-                            {JSON.stringify(log.raw_log_data || log, null, 2)}
-                          </pre>
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-semibold text-teal-400">Log Details</h4>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant={viewMode === 'formatted' ? 'default' : 'outline'}
+                                onClick={() => setViewMode('formatted')}
+                                className={viewMode === 'formatted' ? 'bg-teal-600 hover:bg-teal-700' : 'border-slate-600'}
+                              >
+                                <FileText className="w-4 h-4 mr-1" />
+                                Formatted
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={viewMode === 'raw' ? 'default' : 'outline'}
+                                onClick={() => setViewMode('raw')}
+                                className={viewMode === 'raw' ? 'bg-teal-600 hover:bg-teal-700' : 'border-slate-600'}
+                              >
+                                <Code className="w-4 h-4 mr-1" />
+                                Raw Log
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          {viewMode === 'raw' ? (
+                            <pre className="text-xs text-slate-300 bg-slate-800/50 p-4 rounded-lg overflow-auto max-h-96 border border-slate-700/50 font-mono">
+                              {JSON.stringify(log.raw_log_data || log, null, 2)}
+                            </pre>
+                          ) : (
+                            <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50 space-y-3 max-h-96 overflow-auto">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <span className="text-xs text-slate-400">Timestamp:</span>
+                                  <p className="text-sm text-white font-mono">{log.timestamp}</p>
+                                </div>
+                                <div>
+                                  <span className="text-xs text-slate-400">Source:</span>
+                                  <p className="text-sm text-white">{log.source_type}</p>
+                                </div>
+                                <div>
+                                  <span className="text-xs text-slate-400">Agent:</span>
+                                  <p className="text-sm text-white">{log.hostname || log.agent?.name}</p>
+                                </div>
+                                <div>
+                                  <span className="text-xs text-slate-400">Severity:</span>
+                                  <p className="text-sm text-white">{log.severity || log.rule?.level || 'N/A'}</p>
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-xs text-slate-400">Description:</span>
+                                <p className="text-sm text-white mt-1">{getLogDescription(log)}</p>
+                              </div>
+                              {log.username && (
+                                <div>
+                                  <span className="text-xs text-slate-400">Username:</span>
+                                  <p className="text-sm text-white">{log.username}</p>
+                                </div>
+                              )}
+                              {log.ip_address && (
+                                <div>
+                                  <span className="text-xs text-slate-400">IP Address:</span>
+                                  <p className="text-sm text-white font-mono">{log.ip_address}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
