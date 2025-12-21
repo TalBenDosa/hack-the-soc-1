@@ -9,12 +9,7 @@ import LogAnalysisViewer from "./LogAnalysisViewer";
 export default function InvestigationLogs({
   logs,
   onSelectLog,
-  selectedLogId,
-  verdicts,
-  logInvestigations,
-  onLogInvestigationUpdate,
-  addInvestigationStep,
-  onSetVerdict
+  selectedLogId
 }) {
   
   const getSourceTypeColor = (source) => {
@@ -47,7 +42,6 @@ export default function InvestigationLogs({
             <TableHeader>
               <TableRow className="border-b-slate-700 hover:bg-slate-800/50">
                 <TableHead className="w-10"></TableHead>
-                <TableHead className="text-slate-300">Verdict</TableHead>
                 <TableHead className="text-slate-300">Time</TableHead>
                 <TableHead className="text-slate-300">Agent Name</TableHead>
                 <TableHead className="text-slate-300">Source</TableHead>
@@ -72,14 +66,6 @@ export default function InvestigationLogs({
                         <ChevronRight className="w-4 h-4 text-slate-400" />
                       )}
                     </TableCell>
-                    <TableCell>
-                        <span className={cn(
-                            "text-sm",
-                            verdicts[log.id] ? "text-white" : "text-slate-500"
-                        )}>
-                            {getVerdictText(verdicts[log.id])}
-                        </span>
-                    </TableCell>
                     <TableCell className="text-white font-mono text-sm">
                       {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </TableCell>
@@ -94,19 +80,15 @@ export default function InvestigationLogs({
                     </TableCell>
                   </TableRow>
 
-                  {/* Expanded analysis viewer row - appears immediately after the selected log */}
+                  {/* Expanded log detail viewer row */}
                   {selectedLogId === log.id && (
                     <TableRow className="border-b-slate-800">
-                      <TableCell colSpan={6} className="p-0">
-                        <div className="bg-slate-900/70 border-t border-slate-700">
-                          <LogAnalysisViewer
-                            log={log}
-                            logId={log.id}
-                            logInvestigation={logInvestigations[log.id] || {}}
-                            onLogInvestigationUpdate={onLogInvestigationUpdate}
-                            addInvestigationStep={addInvestigationStep}
-                            onSetVerdict={onSetVerdict}
-                          />
+                      <TableCell colSpan={5} className="p-4 bg-slate-900/70">
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold text-white">Log Details</h4>
+                          <pre className="text-xs text-slate-300 bg-slate-800 p-3 rounded overflow-auto max-h-96">
+                            {JSON.stringify(log.raw_log_data || log, null, 2)}
+                          </pre>
                         </div>
                       </TableCell>
                     </TableRow>
