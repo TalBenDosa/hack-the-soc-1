@@ -22,9 +22,10 @@ import {
 } from "lucide-react";
 
 import InvestigationLogs from "../components/investigation/InvestigationLogs";
-import LogAnalysisViewer from "../components/investigation/LogAnalysisViewer";
 import CompleteInvestigationModal from "../components/investigation/CompleteInvestigationModal";
 import CertificateGenerator from "../components/investigation/CertificateGenerator";
+import IOCTracker from "../components/investigation/IOCTracker";
+import { Textarea } from "@/components/ui/textarea";
 import { InvokeLLM } from "@/integrations/Core";
 
 export default function InvestigationPage() {
@@ -303,51 +304,7 @@ Please respond with this exact JSON structure:
   "areas_for_improvement": ["area 1", "area 2"],
   "suggested_approach": "[How a professional SOC analyst would have approached this]",
   "total_score": [calculated total score 0-100]
-} Your evaluation should be understanding and forgiving of informal language, slang, typos, and non-technical phrasing while focusing on the core understanding and analytical thinking.
-
-**CRITICAL INSTRUCTION: GARBAGE DETECTION**
-Before evaluating, first determine if the student's findings contain meaningful content:
-- If the findings are gibberish, random characters, nonsensical text, or completely unrelated to cybersecurity (like "asdfsadf", "test test", "lorem ipsum", or completely off-topic content), assign 0 points to ALL categories and provide educational feedback explaining why proper analysis is required.
-- Only evaluate substantive attempts at analysis, even if informal or imperfect.
-- A few words or very short responses that show no understanding should also receive very low scores.
-
-**EVALUATION PHILOSOPHY:**
-- Focus on UNDERSTANDING and INTENT rather than perfect technical language
-- Be generous with students who show correct thinking even with informal expression
-- Recognize security concepts even when described in everyday language
-- Look for logical reasoning and sound conclusions
-- Consider the student's overall analytical approach
-- ZERO TOLERANCE for meaningless or garbage content
-
-**LOG DATA:**
-${JSON.stringify(log, null, 2)}
-
-**STUDENT'S FINDINGS:**
-"${investigationData.findings || 'No findings provided'}"
-
-**STUDENT'S VERDICT:** ${investigationData.verdict || 'No verdict provided'}
-
-**EVALUATION CRITERIA:**
-
-**1. CONTENT QUALITY CHECK (PREREQUISITE):**
-First, assess if the student's findings contain ANY meaningful security-related content:
-- Meaningful content: Proceed with normal evaluation
-- Garbage/nonsensical content: Assign 0-10 points maximum across all categories
-
-**2. FINDINGS ANALYSIS (50% of score):**
-Evaluate the student's written findings with maximum understanding and flexibility:
-
-- **Threat Recognition (25%):** Did they identify the threat type correctly? Accept informal descriptions like "someone tried to hack", "suspicious login", "malware stuff", etc. Focus on whether they understood WHAT happened.
-
-- **Event Description Accuracy (25%):** Did they capture the key events? Accept casual language like "user clicked bad link", "computer got infected", "weird network traffic". Focus on factual accuracy, not technical precision.
-
-- **Technical Data Usage (20%):** Did they reference important technical details (IPs, usernames, timestamps, etc.)? Credit any mention of technical data even if not perfectly formatted.
-
-- **Risk and Context Understanding (15%):** Did they grasp why this matters? Accept expressions like "this is bad", "company could be in trouble", "need to fix this fast". Focus on whether they understand consequences.
-
-- **Response Actions (15%):** Did they suggest reasonable next steps? Accept informal suggestions like "block the user", "check other computers", "tell management", "run antivirus". Focus on logical thinking.
-
-},
+}`,
           response_json_schema: {
             type: "object",
             properties: {
@@ -495,7 +452,7 @@ Evaluate the student's written findings with maximum understanding and flexibili
             ai_feedback: {
               detailed_feedback: aiFeedbackForDB.detailed_feedback,
               difficulty_assessment: calculatedFinalScore >= 85 ? 'appropriate' : calculatedFinalScore >= 60 ? 'challenging' : 'too_hard',
-              engagement_level: Object.keys(logInvestigations).length > 0 ? 'high' : 'medium'
+              engagement_level: scenarioReport.scenario_findings.length > 100 ? 'high' : 'medium'
             },
             learning_analytics: {
               concepts_mastered: calculatedFinalScore >= 70 ? [currentScenario.category || "General SOC Skills"] : [],
