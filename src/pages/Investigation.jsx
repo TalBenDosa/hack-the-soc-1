@@ -601,45 +601,53 @@ Please respond with this exact JSON structure:
             </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <div>
+        <div className="space-y-6 mb-6">
+            <div className="w-full">
                 <InvestigationLogs
                   logs={currentScenario.initial_events}
                   onSelectLog={handleSelectLog}
                   selectedLogId={selectedLog ? selectedLog.id : null}
                 />
             </div>
-            <div>
-                <Card className="bg-slate-800/50 border-slate-700 h-full">
-                    <CardHeader>
-                        <CardTitle className="text-white">Scenario Investigation Report</CardTitle>
+            
+            <div className="w-full">
+                <Card className="bg-slate-800/30 border-slate-700/50 backdrop-blur-sm">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-white flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-teal-400" />
+                            Scenario Investigation Report
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <Tabs defaultValue="narrative" className="w-full">
-                            <TabsList className="grid w-full grid-cols-4 bg-slate-900/70 mb-4">
-                                <TabsTrigger value="narrative">Narrative</TabsTrigger>
-                                <TabsTrigger value="findings">Findings</TabsTrigger>
-                                <TabsTrigger value="iocs">IOCs</TabsTrigger>
-                                <TabsTrigger value="verdict">Verdict</TabsTrigger>
+                            <TabsList className="grid w-full grid-cols-4 bg-slate-900/50 mb-4 p-1">
+                                <TabsTrigger value="narrative" className="data-[state=active]:bg-teal-600">Narrative</TabsTrigger>
+                                <TabsTrigger value="findings" className="data-[state=active]:bg-teal-600">Findings</TabsTrigger>
+                                <TabsTrigger value="iocs" className="data-[state=active]:bg-teal-600">IOCs</TabsTrigger>
+                                <TabsTrigger value="verdict" className="data-[state=active]:bg-teal-600">Verdict</TabsTrigger>
                             </TabsList>
                             
-                            <TabsContent value="narrative">
-                                <h4 className="text-sm font-semibold text-white mb-2">Attack Narrative</h4>
-                                <p className="text-xs text-slate-400 mb-3">Tell the complete story of the attack from beginning to end</p>
+                            <TabsContent value="narrative" className="space-y-3">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-white mb-1">Attack Narrative</h4>
+                                    <p className="text-xs text-slate-400 mb-3">Tell the complete story of the attack from beginning to end</p>
+                                </div>
                                 <Textarea
                                     placeholder="Describe the full attack chain, from initial access to final impact..."
-                                    className="bg-slate-700 border-slate-600 text-white min-h-[200px]"
+                                    className="bg-slate-700/50 border-slate-600 text-white min-h-[180px] focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                                     value={scenarioReport.attack_narrative}
                                     onChange={(e) => handleReportUpdate('attack_narrative', e.target.value)}
                                 />
                             </TabsContent>
                             
-                            <TabsContent value="findings">
-                                <h4 className="text-sm font-semibold text-white mb-2">Technical Findings</h4>
-                                <p className="text-xs text-slate-400 mb-3">Document your technical analysis and key evidence</p>
+                            <TabsContent value="findings" className="space-y-3">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-white mb-1">Technical Findings</h4>
+                                    <p className="text-xs text-slate-400 mb-3">Document your technical analysis and key evidence</p>
+                                </div>
                                 <Textarea
                                     placeholder="What did you discover? What evidence supports your conclusions?"
-                                    className="bg-slate-700 border-slate-600 text-white min-h-[200px]"
+                                    className="bg-slate-700/50 border-slate-600 text-white min-h-[180px] focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                                     value={scenarioReport.scenario_findings}
                                     onChange={(e) => handleReportUpdate('scenario_findings', e.target.value)}
                                 />
@@ -652,16 +660,18 @@ Please respond with this exact JSON structure:
                                 />
                             </TabsContent>
                             
-                            <TabsContent value="verdict">
-                                <h4 className="text-sm font-semibold text-white mb-2">Final Verdict</h4>
-                                <p className="text-xs text-slate-400 mb-3">Based on your complete investigation, classify this scenario</p>
-                                <div className="flex flex-col gap-3">
+                            <TabsContent value="verdict" className="space-y-3">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-white mb-1">Final Verdict</h4>
+                                    <p className="text-xs text-slate-400 mb-3">Based on your complete investigation, classify this scenario</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     {['True Positive', 'False Positive', 'Escalate to TIER 2'].map(v => (
                                         <Button 
                                             key={v}
                                             variant={scenarioReport.final_verdict === v ? 'default' : 'outline'}
                                             onClick={() => handleReportUpdate('final_verdict', v)}
-                                            className={`w-full ${scenarioReport.final_verdict === v ? 'bg-teal-600 hover:bg-teal-700' : 'border-slate-600 hover:bg-slate-700'}`}
+                                            className={`${scenarioReport.final_verdict === v ? 'bg-teal-600 hover:bg-teal-700 shadow-lg shadow-teal-500/30' : 'border-slate-600 hover:bg-slate-700/50'}`}
                                         >
                                             {v}
                                         </Button>
