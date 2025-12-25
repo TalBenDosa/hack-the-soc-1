@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -170,35 +169,6 @@ const LogEventEditor = ({ isOpen, onClose, onSave, eventData }) => {
                                 </SelectContent>
                             </Select>
                         </div>
-                    </div>
-
-                    <div>
-                        <Label htmlFor="event_classification" className="text-slate-300">
-                            Event Classification <span className="text-red-400">*</span>
-                        </Label>
-                        <Select value={localEvent.default_classification} onValueChange={handleVerdictChange}>
-                            <SelectTrigger className={`bg-slate-800 border-slate-600 text-white ${selectedClassification?.bgColor || ''} border-2`}>
-                                <div className="flex items-center gap-2">
-                                    {selectedClassification && (
-                                        <selectedClassification.icon className={`w-4 h-4 ${selectedClassification.color}`} />
-                                    )}
-                                    <SelectValue />
-                                </div>
-                            </SelectTrigger>
-                            <SelectContent className="bg-slate-800 border-slate-600 text-white">
-                                {CLASSIFICATION_OPTIONS.map(option => {
-                                    const IconComponent = option.icon;
-                                    return (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            <div className="flex items-center gap-2">
-                                                <IconComponent className={`w-4 h-4 ${option.color}`} />
-                                                <span>{option.label}</span>
-                                            </div>
-                                        </SelectItem>
-                                    );
-                                })}
-                            </SelectContent>
-                        </Select>
                     </div>
 
                     <div>
