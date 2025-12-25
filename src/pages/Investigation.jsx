@@ -660,7 +660,7 @@ Please respond with this exact JSON structure:
                             <TabsContent value="iocs">
                                 <IOCTracker 
                                     iocs={scenarioReport.iocs || []}
-                                    onUpdate={(newIocs) => handleReportUpdate('iocs', newIocs)}
+                                    onIOCsChange={(newIocs) => handleReportUpdate('iocs', newIocs)}
                                 />
                             </TabsContent>
                             
