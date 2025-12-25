@@ -1,11 +1,12 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Award, Loader2, TrendingUp, TrendingDown, CheckCircle, AlertCircle } from "lucide-react";
+import { Award, Loader2, TrendingUp, TrendingDown, CheckCircle, AlertCircle, Download } from "lucide-react";
 import { User } from '@/entities/all';
 import { awardPoints } from '../utils/gamificationService';
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import jsPDF from 'jspdf';
 
 export default function CompleteInvestigationModal({ 
     isOpen, 
@@ -16,6 +17,147 @@ export default function CompleteInvestigationModal({
     feedback,
     scoreBreakdown 
 }) {
+    
+    const generatePDF = () => {
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 20;
+        let yPos = 20;
+
+        // Title
+        doc.setFontSize(24);
+        doc.setFont(undefined, 'bold');
+        doc.text('Investigation Report', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 15;
+
+        // Score
+        doc.setFontSize(48);
+        doc.setTextColor(20, 184, 166);
+        doc.text(`${feedback.overall_score}`, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 8;
+        doc.setFontSize(12);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Out of 100', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 15;
+
+        doc.setTextColor(0, 0, 0);
+
+        // Score Breakdown
+        if (scoreBreakdown && Object.keys(scoreBreakdown).length > 0) {
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text('Score Breakdown', margin, yPos);
+            yPos += 8;
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'normal');
+
+            Object.entries(scoreBreakdown).forEach(([category, data]) => {
+                doc.text(`${category}: ${data.score}/100 (${data.weight})`, margin, yPos);
+                yPos += 6;
+            });
+            yPos += 8;
+        }
+
+        // Strengths
+        if (feedback.strengths && feedback.strengths.length > 0) {
+            if (yPos > 240) {
+                doc.addPage();
+                yPos = 20;
+            }
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(34, 197, 94);
+            doc.text('✓ Strengths', margin, yPos);
+            yPos += 8;
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(0, 0, 0);
+
+            feedback.strengths.forEach(strength => {
+                const lines = doc.splitTextToSize(`• ${strength}`, pageWidth - 2 * margin);
+                lines.forEach(line => {
+                    if (yPos > 280) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.text(line, margin, yPos);
+                    yPos += 5;
+                });
+                yPos += 2;
+            });
+            yPos += 6;
+        }
+
+        // Areas for Improvement
+        if (feedback.areas_for_improvement && feedback.areas_for_improvement.length > 0) {
+            if (yPos > 240) {
+                doc.addPage();
+                yPos = 20;
+            }
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(234, 179, 8);
+            doc.text('⚠ Areas for Improvement', margin, yPos);
+            yPos += 8;
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(0, 0, 0);
+
+            feedback.areas_for_improvement.forEach(area => {
+                const lines = doc.splitTextToSize(`• ${area}`, pageWidth - 2 * margin);
+                lines.forEach(line => {
+                    if (yPos > 280) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.text(line, margin, yPos);
+                    yPos += 5;
+                });
+                yPos += 2;
+            });
+            yPos += 6;
+        }
+
+        // Detailed Feedback
+        if (feedback.detailed_feedback) {
+            if (yPos > 200) {
+                doc.addPage();
+                yPos = 20;
+            }
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('Detailed Feedback', margin, yPos);
+            yPos += 8;
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+
+            const feedbackLines = doc.splitTextToSize(feedback.detailed_feedback, pageWidth - 2 * margin);
+            feedbackLines.forEach(line => {
+                if (yPos > 280) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                doc.text(line, margin, yPos);
+                yPos += 5;
+            });
+        }
+
+        // Footer
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text(
+                `Page ${i} of ${pageCount} | Generated on ${new Date().toLocaleDateString()}`,
+                pageWidth / 2,
+                doc.internal.pageSize.getHeight() - 10,
+                { align: 'center' }
+            );
+        }
+
+        doc.save(`Investigation_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    };
     
     const handleConfirm = async () => {
         // First, call the original confirmation logic (e.g., to save the investigation)
@@ -139,9 +281,17 @@ export default function CompleteInvestigationModal({
                         </div>
                     )}
 
-                    <DialogFooter className="mt-6">
+                    <DialogFooter className="mt-6 flex gap-3">
                         <Button 
-                            className="bg-teal-600 hover:bg-teal-700 w-full"
+                            variant="outline"
+                            className="flex-1 border-slate-600 text-white hover:bg-slate-700"
+                            onClick={generatePDF}
+                        >
+                            <Download className="w-4 h-4 mr-2" />
+                            Download PDF
+                        </Button>
+                        <Button 
+                            className="bg-teal-600 hover:bg-teal-700 flex-1"
                             onClick={handleConfirm}
                         >
                             Continue
