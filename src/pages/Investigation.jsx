@@ -720,13 +720,9 @@ Please respond with this exact JSON structure:
       <CompleteInvestigationModal 
         isOpen={showCompleteModal}
         onClose={() => setShowCompleteModal(false)}
-        feedback={aiFeedback}
-        isGeneratingFeedback={isGeneratingFeedback}
-        onFinalize={handleFinalize}
-        scenario={currentScenario}
+        onConfirm={handleFinalize}
         investigation={investigation}
-        scoreBreakdown={scoreBreakdown}
-        createPageUrl={createPageUrl}
+        isLoading={isGeneratingFeedback}
       />
 
     </div>
