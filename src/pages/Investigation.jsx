@@ -723,6 +723,8 @@ Please respond with this exact JSON structure:
         onConfirm={handleFinalize}
         investigation={investigation}
         isLoading={isGeneratingFeedback}
+        feedback={aiFeedback}
+        scoreBreakdown={scoreBreakdown}
       />
 
     </div>
