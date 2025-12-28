@@ -17,10 +17,12 @@ export default function ScenariosPage() {
     setIsLoading(true);
     setError(null);
     try {
+      console.log('[Scenarios] Fetching active scenarios...');
       const activeScenarios = await Scenario.filter({ is_active: true });
+      console.log('[Scenarios] Fetched scenarios:', activeScenarios.length);
       setScenarios(activeScenarios);
     } catch (err) {
-      console.error("Failed to fetch scenarios:", err);
+      console.error("[Scenarios] Failed to fetch scenarios:", err);
       setError("Failed to load scenarios. Please check your network connection and try again.");
     }
     setIsLoading(false);
