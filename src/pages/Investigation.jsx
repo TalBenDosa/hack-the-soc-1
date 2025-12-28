@@ -633,11 +633,11 @@ Please respond with this exact JSON structure:
                             
                             <TabsContent value="narrative" className="space-y-3">
                                 <div>
-                                    <h4 className="text-sm font-semibold text-white mb-1">Attack Narrative</h4>
-                                    <p className="text-xs text-slate-400 mb-3">Tell the complete story of the attack from beginning to end</p>
+                                    <h4 className="text-sm font-semibold text-white mb-1">Investigation Details</h4>
+                                    <p className="text-xs text-slate-400 mb-3">Document your complete investigation process and findings</p>
                                 </div>
                                 <Textarea
-                                    placeholder="Describe the full attack chain, from initial access to final impact..."
+                                    placeholder="Describe your investigation steps, methods used, and key observations..."
                                     className="bg-slate-700/50 border-slate-600 text-white min-h-[180px] focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                                     value={scenarioReport.attack_narrative}
                                     onChange={(e) => handleReportUpdate('attack_narrative', e.target.value)}
