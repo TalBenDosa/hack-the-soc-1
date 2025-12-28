@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, TenantUser, Tenant } from '@/entities/all';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -239,7 +238,32 @@ export function RoleGuard({ children, permission, fallbackComponent = null }) {
       return fallbackComponent;
     }
     
-    return null; // Silent denial - component doesn't render
+    // Show clear access denied message instead of blank screen
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-slate-900 p-4">
+        <Card className="bg-slate-800 border-slate-700 text-center p-8 max-w-md">
+          <CardHeader>
+            <Lock className="w-12 h-12 text-red-400 mx-auto mb-4" />
+            <CardTitle className="text-white text-xl">Access Denied</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-slate-400 mb-2">
+              {accessInfo?.message || 'You do not have permission to access this feature.'}
+            </p>
+            {accessInfo?.reason && (
+              <p className="text-slate-500 text-sm mb-4">
+                Reason: {accessInfo.reason}
+              </p>
+            )}
+            <Link to={createPageUrl('Dashboard')}>
+              <Button className="bg-teal-600 hover:bg-teal-700 mt-4">
+                Return to Dashboard
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return children;
