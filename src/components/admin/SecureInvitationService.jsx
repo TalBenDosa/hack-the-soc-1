@@ -133,9 +133,12 @@ class SecureInvitationService {
 
             const invitation = await AdminInvitation.create(invitationData);
 
-            // Generate secure invitation link
+            // Generate secure invitation link with explicit page URL
             const baseUrl = window.location.origin;
-            const invitationLink = `${baseUrl}/AcceptAdminInvitation?token=${encodeURIComponent(secureToken)}`;
+            const pagePath = window.location.pathname.includes('app.base44.com') || window.location.hostname === 'app.base44.com' 
+                ? '' 
+                : '#';
+            const invitationLink = `${baseUrl}${pagePath}/AcceptAdminInvitation?token=${encodeURIComponent(secureToken)}`;
 
             console.log('[SECURE INVITATION] Created secure invitation:', invitation.id);
 
