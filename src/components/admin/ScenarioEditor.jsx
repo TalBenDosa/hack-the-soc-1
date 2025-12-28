@@ -24,6 +24,7 @@ export default function ScenarioEditor({ isOpen, onClose, onSave, scenario, tena
         description: '',
         difficulty: 'Medium',
         category: 'Malware',
+        expected_verdict: 'True Positive',
         learning_objectives: [],
         initial_events: [],
         is_active: true
@@ -41,6 +42,7 @@ export default function ScenarioEditor({ isOpen, onClose, onSave, scenario, tena
                 description: scenario.description || '',
                 difficulty: scenario.difficulty || 'Medium',
                 category: scenario.category || 'Malware',
+                expected_verdict: scenario.expected_verdict || 'True Positive',
                 learning_objectives: Array.isArray(scenario.learning_objectives) ? scenario.learning_objectives : [],
                 initial_events: Array.isArray(scenario.initial_events) ? scenario.initial_events : [],
                 is_active: scenario.is_active !== undefined ? scenario.is_active : true
@@ -52,6 +54,7 @@ export default function ScenarioEditor({ isOpen, onClose, onSave, scenario, tena
                 description: '',
                 difficulty: 'Medium',
                 category: 'Malware',
+                expected_verdict: 'True Positive',
                 learning_objectives: [],
                 initial_events: [],
                 is_active: true
@@ -168,6 +171,19 @@ export default function ScenarioEditor({ isOpen, onClose, onSave, scenario, tena
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-800 border-slate-600 text-white">
                                     {difficulties.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label htmlFor="expected_verdict" className="text-slate-300">Expected Scenario Verdict</Label>
+                            <Select value={formData.expected_verdict} onValueChange={(value) => handleInputChange('expected_verdict', value)}>
+                                <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-slate-800 border-slate-600 text-white">
+                                    <SelectItem value="True Positive">True Positive</SelectItem>
+                                    <SelectItem value="False Positive">False Positive</SelectItem>
+                                    <SelectItem value="Escalate to TIER 2">Escalate to TIER 2</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
