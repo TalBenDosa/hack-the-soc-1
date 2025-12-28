@@ -31,7 +31,7 @@ export default function TenantUserManagement({ tenant }) {
     const generateInviteLink = () => {
         if (tenant?.unique_invite_code) {
             const baseUrl = window.location.origin;
-            setInviteLink(`${baseUrl}/JoinTenant?code=${tenant.unique_invite_code}`);
+            setInviteLink(`${baseUrl}/#/JoinTenant?code=${tenant.unique_invite_code}`);
         }
     };
 
