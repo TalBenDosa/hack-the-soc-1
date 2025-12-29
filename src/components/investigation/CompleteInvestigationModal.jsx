@@ -554,15 +554,14 @@ export default function CompleteInvestigationModal({
 
                     <DialogFooter className="mt-6 flex gap-3">
                         <Button 
-                            variant="outline"
-                            className="flex-1 border-slate-600 text-white hover:bg-slate-700"
+                            className="bg-teal-600 hover:bg-teal-700 flex-1"
                             onClick={generateComprehensivePDF}
                         >
                             <Download className="w-4 h-4 mr-2" />
                             Download Comprehensive Report
                         </Button>
                         <Button 
-                            className="bg-slate-600 hover:bg-slate-700 flex-1"
+                            className="bg-teal-600 hover:bg-teal-700 flex-1"
                             onClick={handleConfirm}
                         >
                             Continue
