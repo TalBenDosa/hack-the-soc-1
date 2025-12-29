@@ -234,8 +234,9 @@ export default function Layout({ children, currentPageName }) {
               role = tenantContext.role === 'tenant_admin' ? 'Environment Admin' : 'Student';
             }
           } else {
-            // **CHANGED**: No tenant is OK - user gets full access as 'Student'
-            role = 'Student';
+            // User not assigned to tenant - full public access
+            role = 'Unassigned';
+            console.log('[Layout] ✅ User has no tenant assignment - PUBLIC ACCESS GRANTED');
           }
         } else {
             role = "Super Admin";

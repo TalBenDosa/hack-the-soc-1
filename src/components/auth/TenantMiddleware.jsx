@@ -42,22 +42,27 @@ const TenantMiddleware = ({ children }) => {
                         console.log('[TENANT MIDDLEWARE] Super Admin - no impersonation, cleared tenant context');
                     }
                 } else {
-                    // Regular user - set up their tenant context
-                    const tenantUsers = await TenantUser.filter({ user_id: user.id, status: 'active' });
-                    
-                    if (tenantUsers.length > 0) {
-                        const tenantUser = tenantUsers[0];
-                        const tenantContext = {
-                            user_id: user.id,
-                            tenant_id: tenantUser.tenant_id,
-                            role: tenantUser.role,
-                            is_impersonating: false
-                        };
+                    // Regular user - try to set up tenant context but don't block
+                    try {
+                        const tenantUsers = await TenantUser.filter({ user_id: user.id, status: 'active' });
                         
-                        localStorage.setItem('tenant_context', JSON.stringify(tenantContext));
-                        console.log('[TENANT MIDDLEWARE] Set regular user tenant context:', tenantContext);
-                    } else {
-                        console.log('[TENANT MIDDLEWARE] User not assigned to any active tenant');
+                        if (tenantUsers.length > 0) {
+                            const tenantUser = tenantUsers[0];
+                            const tenantContext = {
+                                user_id: user.id,
+                                tenant_id: tenantUser.tenant_id,
+                                role: tenantUser.role,
+                                is_impersonating: false
+                            };
+                            
+                            localStorage.setItem('tenant_context', JSON.stringify(tenantContext));
+                            console.log('[TENANT MIDDLEWARE] Set regular user tenant context:', tenantContext);
+                        } else {
+                            console.log('[TENANT MIDDLEWARE] ✅ User not assigned - PUBLIC ACCESS GRANTED');
+                            localStorage.removeItem('tenant_context');
+                        }
+                    } catch (error) {
+                        console.log('[TENANT MIDDLEWARE] ✅ No tenant - PUBLIC ACCESS GRANTED');
                         localStorage.removeItem('tenant_context');
                     }
                 }
