@@ -57,13 +57,8 @@ export default function JoinTenant() {
             setLoading(true);
             console.log('[JOIN TENANT] Processing invitation with code:', code, 'Admin:', isAdmin, 'Expected tenant:', expectedTenantName);
 
-            // Get current user
+            // Get current user (should already be logged in from useEffect check)
             const currentUser = await User.me();
-            if (!currentUser) {
-                setResult({ success: false, message: 'You must be logged in to join a tenant.' });
-                setLoading(false);
-                return;
-            }
 
             console.log('[JOIN TENANT] Current user:', currentUser.email, 'Role:', currentUser.role);
 
