@@ -27,7 +27,11 @@ export default function JoinTenant() {
                 }
                 
                 // User is logged in, process the invitation
-                const urlParams = new URLSearchParams(window.location.search);
+                // Handle both hash routing and regular routing
+                const hashSearch = window.location.hash.includes('?') 
+                    ? window.location.hash.split('?')[1] 
+                    : window.location.search.substring(1);
+                const urlParams = new URLSearchParams(hashSearch);
                 const code = urlParams.get('code');
                 const isAdmin = urlParams.get('admin') === 'true';
                 const tenantName = urlParams.get('tenant_name');
