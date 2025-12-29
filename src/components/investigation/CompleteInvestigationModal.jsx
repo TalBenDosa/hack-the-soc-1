@@ -18,69 +18,298 @@ export default function CompleteInvestigationModal({
     scoreBreakdown 
 }) {
     
-    const generatePDF = () => {
+    const generateComprehensivePDF = () => {
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
         const margin = 20;
         let yPos = 20;
 
-        // Title
-        doc.setFontSize(24);
-        doc.setFont(undefined, 'bold');
-        doc.text('Investigation Report', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 15;
+        const checkNewPage = (requiredSpace = 20) => {
+            if (yPos + requiredSpace > pageHeight - 20) {
+                doc.addPage();
+                yPos = 20;
+                return true;
+            }
+            return false;
+        };
 
-        // Score
-        doc.setFontSize(48);
-        doc.setTextColor(20, 184, 166);
-        doc.text(`${feedback.overall_score}`, pageWidth / 2, yPos, { align: 'center' });
-        yPos += 8;
-        doc.setFontSize(12);
-        doc.setTextColor(100, 100, 100);
-        doc.text('Out of 100', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 15;
+        // Header with Logo/Title
+        doc.setFillColor(20, 184, 166);
+        doc.rect(0, 0, pageWidth, 40, 'F');
+        doc.setFontSize(28);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text('HACK THE SOC', pageWidth / 2, 18, { align: 'center' });
+        doc.setFontSize(16);
+        doc.text('Investigation Analysis Report', pageWidth / 2, 30, { align: 'center' });
+        yPos = 55;
 
         doc.setTextColor(0, 0, 0);
 
-        // Score Breakdown
-        if (scoreBreakdown && Object.keys(scoreBreakdown).length > 0) {
-            doc.setFontSize(16);
-            doc.setFont(undefined, 'bold');
-            doc.text('Score Breakdown', margin, yPos);
-            yPos += 8;
-            doc.setFontSize(11);
-            doc.setFont(undefined, 'normal');
-
-            Object.entries(scoreBreakdown).forEach(([category, data]) => {
-                doc.text(`${category}: ${data.score}/100 (${data.weight})`, margin, yPos);
-                yPos += 6;
-            });
-            yPos += 8;
+        // Investigation Details
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Investigation Summary', margin, yPos);
+        yPos += 8;
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        
+        if (investigation) {
+            const startTime = new Date(investigation.start_time);
+            const endTime = investigation.end_time ? new Date(investigation.end_time) : new Date();
+            const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
+            
+            doc.text(`Date: ${startTime.toLocaleDateString()}`, margin, yPos);
+            yPos += 6;
+            doc.text(`Duration: ${durationMinutes} minutes`, margin, yPos);
+            yPos += 6;
+            doc.text(`Status: ${investigation.status || 'Completed'}`, margin, yPos);
+            yPos += 12;
         }
 
-        // Strengths
-        if (feedback.strengths && feedback.strengths.length > 0) {
-            if (yPos > 240) {
-                doc.addPage();
-                yPos = 20;
+        // Overall Score - Large and Prominent
+        checkNewPage(40);
+        doc.setFillColor(240, 240, 240);
+        doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 35, 3, 3, 'F');
+        doc.setFontSize(48);
+        doc.setFont(undefined, 'bold');
+        
+        const scoreColor = feedback.overall_score >= 85 ? [34, 197, 94] : 
+                          feedback.overall_score >= 70 ? [234, 179, 8] : [239, 68, 68];
+        doc.setTextColor(...scoreColor);
+        doc.text(`${feedback.overall_score}`, pageWidth / 2, yPos + 22, { align: 'center' });
+        doc.setFontSize(12);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Out of 100', pageWidth / 2, yPos + 30, { align: 'center' });
+        yPos += 45;
+
+        doc.setTextColor(0, 0, 0);
+
+        // Score Breakdown with Visual Bars
+        if (scoreBreakdown && Object.keys(scoreBreakdown).length > 0) {
+            checkNewPage(50);
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text('Detailed Score Analysis', margin, yPos);
+            yPos += 10;
+
+            Object.entries(scoreBreakdown).forEach(([category, data]) => {
+                checkNewPage(15);
+                
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'bold');
+                doc.text(`${category}`, margin, yPos);
+                doc.setFont(undefined, 'normal');
+                doc.text(`${data.score}/100 (Weight: ${data.weight})`, pageWidth - margin - 50, yPos);
+                yPos += 5;
+                
+                // Progress bar
+                const barWidth = pageWidth - 2 * margin;
+                const fillWidth = (data.score / 100) * barWidth;
+                doc.setFillColor(220, 220, 220);
+                doc.roundedRect(margin, yPos, barWidth, 4, 2, 2, 'F');
+                doc.setFillColor(20, 184, 166);
+                doc.roundedRect(margin, yPos, fillWidth, 4, 2, 2, 'F');
+                yPos += 10;
+            });
+            yPos += 5;
+        }
+
+        // Investigation Content
+        if (investigation?.findings?.scenario_report) {
+            const report = investigation.findings.scenario_report;
+            
+            // Attack Narrative
+            if (report.attack_narrative) {
+                checkNewPage(30);
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(99, 102, 241);
+                doc.text('📝 Attack Narrative', margin, yPos);
+                yPos += 8;
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                
+                const narrativeLines = doc.splitTextToSize(report.attack_narrative, pageWidth - 2 * margin);
+                narrativeLines.forEach(line => {
+                    checkNewPage();
+                    doc.text(line, margin, yPos);
+                    yPos += 5;
+                });
+                yPos += 8;
             }
+
+            // Technical Findings
+            if (report.scenario_findings) {
+                checkNewPage(30);
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(168, 85, 247);
+                doc.text('🔍 Technical Findings', margin, yPos);
+                yPos += 8;
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                
+                const findingsLines = doc.splitTextToSize(report.scenario_findings, pageWidth - 2 * margin);
+                findingsLines.forEach(line => {
+                    checkNewPage();
+                    doc.text(line, margin, yPos);
+                    yPos += 5;
+                });
+                yPos += 8;
+            }
+
+            // IOCs
+            if (report.iocs && report.iocs.length > 0) {
+                checkNewPage(30);
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(239, 68, 68);
+                doc.text(`🚨 Indicators of Compromise (${report.iocs.length})`, margin, yPos);
+                yPos += 8;
+                doc.setFontSize(9);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                
+                report.iocs.forEach((ioc, idx) => {
+                    checkNewPage(12);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(`${idx + 1}. ${ioc.type}`, margin, yPos);
+                    yPos += 5;
+                    doc.setFont(undefined, 'normal');
+                    doc.text(`   Value: ${ioc.value}`, margin, yPos);
+                    if (ioc.source) {
+                        yPos += 4;
+                        doc.text(`   Source: ${ioc.source}`, margin, yPos);
+                    }
+                    yPos += 6;
+                });
+                yPos += 5;
+            }
+
+            // Final Verdict
+            if (report.final_verdict) {
+                checkNewPage(20);
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(20, 184, 166);
+                doc.text('⚖️ Final Verdict', margin, yPos);
+                yPos += 8;
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(0, 0, 0);
+                doc.text(report.final_verdict, margin, yPos);
+                yPos += 10;
+            }
+        }
+
+        // AI Evaluation Details
+        if (feedback.evaluation_details) {
+            doc.addPage();
+            yPos = 20;
+            
+            doc.setFontSize(18);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(99, 102, 241);
+            doc.text('AI Expert Evaluation', margin, yPos);
+            yPos += 12;
+            doc.setTextColor(0, 0, 0);
+
+            const evalDetails = feedback.evaluation_details;
+
+            // Narrative Analysis
+            if (evalDetails.narrative_feedback) {
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text('Attack Narrative Analysis', margin, yPos);
+                yPos += 6;
+                doc.setFontSize(9);
+                doc.setFont(undefined, 'normal');
+                const narrativeLines = doc.splitTextToSize(evalDetails.narrative_feedback, pageWidth - 2 * margin);
+                narrativeLines.forEach(line => {
+                    checkNewPage();
+                    doc.text(line, margin, yPos);
+                    yPos += 4;
+                });
+                yPos += 8;
+            }
+
+            // Technical Analysis
+            if (evalDetails.technical_feedback) {
+                checkNewPage(20);
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text('Technical Analysis Feedback', margin, yPos);
+                yPos += 6;
+                doc.setFontSize(9);
+                doc.setFont(undefined, 'normal');
+                const techLines = doc.splitTextToSize(evalDetails.technical_feedback, pageWidth - 2 * margin);
+                techLines.forEach(line => {
+                    checkNewPage();
+                    doc.text(line, margin, yPos);
+                    yPos += 4;
+                });
+                yPos += 8;
+            }
+
+            // IOC Feedback
+            if (evalDetails.ioc_feedback) {
+                checkNewPage(20);
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text('IOC Identification Analysis', margin, yPos);
+                yPos += 6;
+                doc.setFontSize(9);
+                doc.setFont(undefined, 'normal');
+                const iocLines = doc.splitTextToSize(evalDetails.ioc_feedback, pageWidth - 2 * margin);
+                iocLines.forEach(line => {
+                    checkNewPage();
+                    doc.text(line, margin, yPos);
+                    yPos += 4;
+                });
+                yPos += 8;
+            }
+
+            // Verdict Feedback
+            if (evalDetails.verdict_feedback) {
+                checkNewPage(20);
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text('Verdict Analysis', margin, yPos);
+                yPos += 6;
+                doc.setFontSize(9);
+                doc.setFont(undefined, 'normal');
+                const verdictLines = doc.splitTextToSize(evalDetails.verdict_feedback, pageWidth - 2 * margin);
+                verdictLines.forEach(line => {
+                    checkNewPage();
+                    doc.text(line, margin, yPos);
+                    yPos += 4;
+                });
+                yPos += 8;
+            }
+        }
+
+        // Strengths Section
+        if (feedback.strengths && feedback.strengths.length > 0) {
+            checkNewPage(30);
             doc.setFontSize(14);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(34, 197, 94);
-            doc.text('✓ Strengths', margin, yPos);
+            doc.text('✅ Key Strengths', margin, yPos);
             yPos += 8;
             doc.setFontSize(10);
             doc.setFont(undefined, 'normal');
             doc.setTextColor(0, 0, 0);
 
-            feedback.strengths.forEach(strength => {
-                const lines = doc.splitTextToSize(`• ${strength}`, pageWidth - 2 * margin);
+            feedback.strengths.forEach((strength, idx) => {
+                checkNewPage(10);
+                const lines = doc.splitTextToSize(`${idx + 1}. ${strength}`, pageWidth - 2 * margin - 5);
                 lines.forEach(line => {
-                    if (yPos > 280) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-                    doc.text(line, margin, yPos);
+                    checkNewPage();
+                    doc.text(line, margin + 5, yPos);
                     yPos += 5;
                 });
                 yPos += 2;
@@ -90,27 +319,22 @@ export default function CompleteInvestigationModal({
 
         // Areas for Improvement
         if (feedback.areas_for_improvement && feedback.areas_for_improvement.length > 0) {
-            if (yPos > 240) {
-                doc.addPage();
-                yPos = 20;
-            }
+            checkNewPage(30);
             doc.setFontSize(14);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(234, 179, 8);
-            doc.text('⚠ Areas for Improvement', margin, yPos);
+            doc.text('⚠️ Areas for Improvement', margin, yPos);
             yPos += 8;
             doc.setFontSize(10);
             doc.setFont(undefined, 'normal');
             doc.setTextColor(0, 0, 0);
 
-            feedback.areas_for_improvement.forEach(area => {
-                const lines = doc.splitTextToSize(`• ${area}`, pageWidth - 2 * margin);
+            feedback.areas_for_improvement.forEach((area, idx) => {
+                checkNewPage(10);
+                const lines = doc.splitTextToSize(`${idx + 1}. ${area}`, pageWidth - 2 * margin - 5);
                 lines.forEach(line => {
-                    if (yPos > 280) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-                    doc.text(line, margin, yPos);
+                    checkNewPage();
+                    doc.text(line, margin + 5, yPos);
                     yPos += 5;
                 });
                 yPos += 2;
@@ -118,45 +342,47 @@ export default function CompleteInvestigationModal({
             yPos += 6;
         }
 
-        // Detailed Feedback
-        if (feedback.detailed_feedback) {
-            if (yPos > 200) {
-                doc.addPage();
-                yPos = 20;
-            }
+        // Suggested Professional Approach
+        if (feedback.evaluation_details?.suggested_approach) {
+            checkNewPage(30);
             doc.setFontSize(14);
             doc.setFont(undefined, 'bold');
-            doc.text('Detailed Feedback', margin, yPos);
+            doc.setTextColor(99, 102, 241);
+            doc.text('💡 Professional Approach Recommendation', margin, yPos);
             yPos += 8;
             doc.setFontSize(10);
             doc.setFont(undefined, 'normal');
-
-            const feedbackLines = doc.splitTextToSize(feedback.detailed_feedback, pageWidth - 2 * margin);
-            feedbackLines.forEach(line => {
-                if (yPos > 280) {
-                    doc.addPage();
-                    yPos = 20;
-                }
+            doc.setTextColor(0, 0, 0);
+            
+            const approachLines = doc.splitTextToSize(feedback.evaluation_details.suggested_approach, pageWidth - 2 * margin);
+            approachLines.forEach(line => {
+                checkNewPage();
                 doc.text(line, margin, yPos);
                 yPos += 5;
             });
         }
 
-        // Footer
+        // Footer on all pages
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
             doc.setFontSize(8);
             doc.setTextColor(150, 150, 150);
             doc.text(
-                `Page ${i} of ${pageCount} | Generated on ${new Date().toLocaleDateString()}`,
+                `HACK THE SOC - Comprehensive Investigation Report | Page ${i} of ${pageCount}`,
                 pageWidth / 2,
-                doc.internal.pageSize.getHeight() - 10,
+                pageHeight - 10,
+                { align: 'center' }
+            );
+            doc.text(
+                `Generated: ${new Date().toLocaleString()}`,
+                pageWidth / 2,
+                pageHeight - 5,
                 { align: 'center' }
             );
         }
 
-        doc.save(`Investigation_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+        doc.save(`Investigation_Report_Comprehensive_${new Date().toISOString().split('T')[0]}.pdf`);
     };
     
     const handleConfirm = async () => {
@@ -285,10 +511,10 @@ export default function CompleteInvestigationModal({
                         <Button 
                             variant="outline"
                             className="flex-1 border-slate-600 text-white hover:bg-slate-700"
-                            onClick={generatePDF}
+                            onClick={generateComprehensivePDF}
                         >
                             <Download className="w-4 h-4 mr-2" />
-                            Download PDF
+                            Download Comprehensive Report
                         </Button>
                         <Button 
                             className="bg-teal-600 hover:bg-teal-700 flex-1"
