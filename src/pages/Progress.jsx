@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { User, UserProgress, TenantUser } from "@/entities/all";
+import { User, UserProgress } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,52 +29,24 @@ export default function ProgressPage() {
     try {
       const user = await User.me();
       if (!user) {
-        setError("User context not found. Please log in again.");
+        setError("User not found. Please log in.");
         setLoading(false);
         return;
       }
 
-      // Try to get tenant but don't require it
-      let tenantId = null;
+      console.log(`[PROGRESS] Fetching progress for user: ${user.id}`);
 
-      try {
-        const tenantContextString = localStorage.getItem('tenant_context');
-        if (tenantContextString) {
-          const tenantContext = JSON.parse(tenantContextString);
-          tenantId = tenantContext.tenant_id;
-        }
-
-        if (!tenantId && TenantUser && typeof TenantUser.filter === 'function') {
-          const tenantUsers = await TenantUser.filter({ user_id: user.id, status: 'active' });
-          if (tenantUsers && tenantUsers.length > 0) {
-            tenantId = tenantUsers[0].tenant_id;
-          }
-        }
-      } catch (error) {
-        console.log('[PROGRESS] Could not find tenant, continuing without it:', error);
-      }
-
-      console.log(`[PROGRESS] Fetching progress for user: ${user.id}, tenant: ${tenantId || 'none'}`);
-
-      if (!UserProgress || typeof UserProgress.filter !== 'function') {
-        console.error('[PROGRESS] UserProgress entity not available');
-        throw new Error("User progress system not available");
-      }
-
-      // Fetch any progress record for this user
+      // Simple query by user_id
       const progressRecords = await UserProgress.filter({ user_id: user.id });
 
       if (progressRecords && progressRecords.length > 0) {
         console.log('[PROGRESS] ✅ Found user progress record');
         setUserProgress(progressRecords[0]);
       } else {
-        console.log('[PROGRESS] ✅ No progress record found - creating new one');
-        // Create new progress record with tenant_id=null if unassigned
+        console.log('[PROGRESS] ✅ Creating new progress record');
         const newProgressRecord = await UserProgress.create({
           user_id: user.id,
           user_full_name: user.full_name,
-          tenant_id: tenantId,
-          is_super_admin_activity: false,
           total_scenarios_completed: 0,
           total_scenarios_attempted: 0,
           average_score: 0,
@@ -158,12 +130,10 @@ export default function ProgressPage() {
           </div>
         </div>
 
-        {/* Points Widget */}
         <div className="mb-8">
             <PointsWidget userProgress={userProgress} />
         </div>
 
-        {/* Overview Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="bg-slate-800 border-slate-700">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

@@ -1,27 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { Investigation, Scenario, UserProgress, User, TenantUser } from "@/entities/all"; // Added User and TenantUser
+import { Investigation, Scenario, UserProgress, User } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { 
   AlertTriangle, 
-  Shield, 
   Activity, 
-  Clock, 
-  Eye, 
   Target,
   TrendingUp,
-  AlertCircle,
   CheckCircle,
-  XCircle,
   RefreshCw
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 import LiveEventFeed from "../components/dashboard/LiveEventFeed";
-import ThreatMap from "../components/dashboard/ThreatMap"; // Keep this import as it might be used elsewhere or in future changes
 
 export default function Dashboard() {
   const [investigations, setInvestigations] = useState([]);
@@ -39,85 +31,12 @@ export default function Dashboard() {
     setError(null);
     try {
       const currentUser = await User.me();
-      console.log('[DASHBOARD] Current user:', currentUser.email, 'Role:', currentUser.role);
+      console.log('[DASHBOARD] Current user:', currentUser.email);
 
-      let currentTenantId = null;
-
-      // **ENHANCED**: Super Admin context detection
-      if (currentUser.role === 'admin') {
-        console.log('[DASHBOARD] Super Admin detected - checking for tenant context');
-        
-        // Check stored tenant context
-        const storedTenantContext = sessionStorage.getItem('current_tenant_context');
-        if (storedTenantContext) {
-          try {
-            const tenantInfo = JSON.parse(storedTenantContext);
-            currentTenantId = tenantInfo.id;
-            console.log('[DASHBOARD] Using stored tenant context:', currentTenantId);
-          } catch (error) {
-            console.error('[DASHBOARD] Error parsing stored tenant context:', error);
-            // If parsing fails, treat as no stored context for safety
-            currentTenantId = null; 
-          }
-        }
-        
-        // Check impersonation data if no tenant context found yet
-        const impersonationData = sessionStorage.getItem('superadmin_impersonation');
-        if (impersonationData && !currentTenantId) {
-          try {
-            const impersonation = JSON.parse(impersonationData);
-            currentTenantId = impersonation.target_tenant_id;
-            console.log('[DASHBOARD] Super Admin viewing tenant via impersonation:', currentTenantId);
-          } catch (error) {
-            console.error('[DASHBOARD] Error parsing impersonation data:', error);
-            // If parsing fails, treat as no impersonation context for safety
-            currentTenantId = null; 
-          }
-        }
-      } else {
-        // Regular user - try to get their tenant but don't fail if not found
-        try {
-          const tenantUsers = await TenantUser.filter({ user_id: currentUser.id, status: 'active' });
-          currentTenantId = tenantUsers.length > 0 ? tenantUsers[0].tenant_id : null;
-          console.log('[DASHBOARD] Regular user tenant:', currentTenantId);
-        } catch (error) {
-          console.log('[DASHBOARD] No tenant found for user, continuing without tenant context');
-        }
-      }
-
-      // **SIMPLIFIED**: Load data with or without tenant
-      let investigationsData = [];
-      let scenariosData = [];
-      let progressData = [];
-
-      if (currentTenantId) {
-        // Load tenant-specific data
-        investigationsData = await Investigation.filter({ tenant_id: currentTenantId }, "-created_date", 10);
-        scenariosData = await Scenario.filter({ tenant_id: currentTenantId }, null, 6);
-        
-        if (currentUser.role === 'admin') {
-          progressData = await UserProgress.filter({ 
-            user_id: currentUser.id,
-            tenant_id: currentTenantId,
-            is_super_admin_activity: true 
-          });
-        } else {
-          progressData = await UserProgress.filter({ 
-            user_id: currentUser.id,
-            tenant_id: currentTenantId,
-            is_super_admin_activity: false 
-          });
-        }
-        
-        console.log(`[DASHBOARD] Loaded tenant ${currentTenantId} data`);
-      } else {
-        // **NO TENANT**: Load all public data
-        investigationsData = await Investigation.list("-created_date", 10);
-        scenariosData = await Scenario.list(null, 6);
-        progressData = await UserProgress.filter({ user_id: currentUser.id });
-        
-        console.log('[DASHBOARD] Loaded data without tenant context');
-      }
+      // Load all public data
+      const investigationsData = await Investigation.list("-created_date", 10);
+      const scenariosData = await Scenario.list(null, 6);
+      const progressData = await UserProgress.filter({ user_id: currentUser.id });
       
       setInvestigations(investigationsData);
       setScenarios(scenariosData);
@@ -128,24 +47,6 @@ export default function Dashboard() {
       setError("A network error occurred. Please check your connection and try again.");
     }
     setIsLoading(false);
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "active": return "bg-yellow-500";
-      case "completed": return "bg-green-500";
-      case "failed": return "bg-red-500";
-      default: return "bg-gray-500";
-    }
-  };
-
-  const getDifficultyColor = (difficulty) => {
-    switch (difficulty) {
-      case "Easy": return "text-green-400 bg-green-400/20";
-      case "Medium": return "text-yellow-400 bg-yellow-400/20";
-      case "Hard": return "text-red-400 bg-red-400/20";
-      default: return "text-gray-400 bg-gray-400/20";
-    }
   };
 
   return (

@@ -1,57 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { User, TenantUser, Tenant } from '@/entities/all';
+import { User } from '@/entities/all';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, Lock, AlertTriangle } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Lock } from "lucide-react";
+import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 
-// **SIMPLIFIED**: All users get full access except admin-only features
+// Simple permission matrix: admin vs regular user
 const PERMISSIONS_MATRIX = {
-  // Super Admin-only permissions
-  'super_admin_access': { admin: true },
-  'global_content_management': { admin: true },
-  'tenant_management': { admin: true },
-  'system_impersonation': { admin: true },
+  // Admin-only permissions
+  'admin_panel': { admin: true },
+  'create_content': { admin: true },
+  'manage_users': { admin: true },
   
-  // Environment Admin permissions
-  'create_lessons': { admin: true, tenant_admin: true },
-  'create_quizzes': { admin: true, tenant_admin: true },
-  'create_scenarios': { admin: true, tenant_admin: true },
-  'create_live_logs': { admin: true, tenant_admin: true },
-  'invite_students': { admin: true, tenant_admin: true },
-  'manage_tenant_users': { admin: true, tenant_admin: true },
-  'tenant_configuration': { admin: true, tenant_admin: true },
-  
-  // **PUBLIC ACCESS** - All authenticated users get these
-  'view_dashboard_logs': { default: true },
-  'view_theoretical_lessons': { default: true },
+  // Public permissions - all authenticated users
+  'view_dashboard': { default: true },
+  'view_lessons': { default: true },
   'access_quizzes': { default: true },
   'access_scenarios': { default: true },
-  'access_progress_tracking': { default: true },
-  'access_certificates': { default: true },
+  'view_progress': { default: true },
 };
 
-export function getUserRole(user, tenantContext) {
-  if (user?.role === 'admin') {
-    return 'admin';
-  }
-  
-  if (tenantContext?.role) {
-    return tenantContext.role;
-  }
-  
-  if (tenantContext?.tenant?.admin_email && 
-      user?.email?.toLowerCase() === tenantContext.tenant.admin_email.toLowerCase()) {
-    return 'tenant_admin';
-  }
-  
-  return 'user'; // Default authenticated user
-}
-
-export function hasPermission(userRole, permission, tenantInfo) {
-  console.log(`[PERMISSIONS] Checking ${permission} for role ${userRole}`);
-
+export function hasPermission(user, permission) {
   const permissionConfig = PERMISSIONS_MATRIX[permission];
   
   if (!permissionConfig) {
@@ -61,118 +31,42 @@ export function hasPermission(userRole, permission, tenantInfo) {
 
   // Check if permission has default: true (public access)
   if (permissionConfig.default === true) {
-    console.log(`[PERMISSIONS] ${permission} is publicly accessible`);
     return true;
   }
 
-  // Check role-specific permissions
-  if (permissionConfig[userRole] === true) {
-    console.log(`[PERMISSIONS] ${permission} granted for role ${userRole}`);
+  // Check if user is admin
+  if (user?.role === 'admin' && permissionConfig.admin === true) {
     return true;
   }
 
-  console.log(`[PERMISSIONS] ${permission} denied for role ${userRole}`);
   return false;
 }
 
 export function RoleGuard({ children, permission, fallbackComponent = null }) {
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
-  const [accessInfo, setAccessInfo] = useState(null);
 
   useEffect(() => {
     const checkAccess = async () => {
       try {
-        console.log(`[ROLE GUARD] Checking access for permission: ${permission}`);
-        
         const currentUser = await User.me();
         if (!currentUser) {
-          console.log('[ROLE GUARD] No user found');
           setHasAccess(false);
           setLoading(false);
           return;
         }
 
-        let finalTenantContext = null;
-        let finalTenantInfo = null;
-
-        // Try to find tenant context but don't require it
-        if (currentUser.role === 'admin') {
-          const storedTenantContext = sessionStorage.getItem('current_tenant_context');
-          if (storedTenantContext) {
-            try {
-              finalTenantInfo = JSON.parse(storedTenantContext);
-            } catch (e) {
-              console.error('[ROLE GUARD] Error parsing stored tenant context:', e);
-            }
-          }
-          
-          const impersonationData = sessionStorage.getItem('superadmin_impersonation');
-          if (impersonationData && !finalTenantInfo) {
-            try {
-              const impersonation = JSON.parse(impersonationData);
-              const tenants = await Tenant.filter({ id: impersonation.target_tenant_id });
-              if (tenants.length > 0) {
-                finalTenantInfo = tenants[0];
-              }
-            } catch (e) {
-              console.error('[ROLE GUARD] Error parsing impersonation data:', e);
-            }
-          }
-
-          if (finalTenantInfo) {
-            finalTenantContext = {
-              tenant_id: finalTenantInfo.id,
-              role: 'tenant_admin',
-              tenant: finalTenantInfo,
-              is_super_admin_context: true
-            };
-          }
-        } else {
-          // Try to find tenant for regular users but don't fail if not found
-          try {
-            const tenantUsers = await TenantUser.filter({ user_id: currentUser.id });
-            const activeTenantUsers = tenantUsers.filter(tu => ['active', 'pending'].includes(tu.status));
-            
-            if (activeTenantUsers.length > 0) {
-              const tenantUser = activeTenantUsers[0];
-              const tenants = await Tenant.filter({ id: tenantUser.tenant_id });
-              
-              if (tenants.length > 0 && tenants[0].status === 'active') {
-                finalTenantInfo = tenants[0];
-                finalTenantContext = { ...tenantUser, tenant: finalTenantInfo };
-              }
-            }
-          } catch (error) {
-            console.log('[ROLE GUARD] No tenant found, continuing with user access');
-          }
-        }
-        
-        const finalRole = getUserRole(currentUser, finalTenantContext);
-        const access = hasPermission(finalRole, permission, finalTenantInfo);
-
-        console.log(`[ROLE GUARD] ✅ Final decision - Role: ${finalRole}, Permission: ${permission}, Access: ${access}`);
-        
+        const access = hasPermission(currentUser, permission);
         setHasAccess(access);
-        setAccessInfo({ 
-          role: finalRole, 
-          tenant: finalTenantInfo?.name || 'No tenant (public access)',
-          permission: permission,
-          granted: access
-        });
-
       } catch (error) {
         console.error(`[ROLE GUARD] Error during access check:`, error);
         
         // For public permissions, allow access even on error
         if (PERMISSIONS_MATRIX[permission]?.default === true) {
-          console.log('[ROLE GUARD] Error occurred but permission is public, granting access');
           setHasAccess(true);
         } else {
           setHasAccess(false);
         }
-        
-        setAccessInfo({ reason: 'system_error', message: 'System error during permission check' });
       } finally {
         setLoading(false);
       }
