@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Scenario, Investigation, User, TenantUser, StudentActivityLog } from "@/entities/all";
+import { Scenario, Investigation, User, StudentActivityLog } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,16 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
   Clock,
-  Shield,
-  Activity,
-  AlertTriangle,
   Target,
   FileText,
-  UserCheck,
   Trophy,
   Loader2,
   ChevronLeft,
   CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 
 import InvestigationLogs from "../components/investigation/InvestigationLogs";
@@ -83,7 +80,6 @@ export default function InvestigationPage() {
 
   const handleSelectLog = useCallback((log) => {
       setSelectedLog(prevSelectedLog => {
-        // If the clicked log is already selected, deselect it to close the viewer.
         if (log && prevSelectedLog && log.id === prevSelectedLog.id) {
           addInvestigationStep({
             action_type: "Log Viewer Closed",
@@ -91,7 +87,6 @@ export default function InvestigationPage() {
           });
           return null;
         }
-        // Otherwise, select the new log.
         if (log) {
           addInvestigationStep({
             action_type: "Log Viewed",
@@ -418,12 +413,6 @@ Please respond with this exact JSON structure:
         setInvestigation(updatedInvestigation);
 
         try {
-          let tenantId = null;
-          const tenantUsers = await TenantUser.filter({ user_id: currentUser.id, status: 'active' });
-          if (tenantUsers.length > 0) {
-            tenantId = tenantUsers[0].tenant_id;
-          }
-
           const startTimeDate = new Date(investigation.start_time);
           const durationMinutes = Math.round((Date.now() - startTimeDate.getTime()) / (1000 * 60));
 
@@ -432,7 +421,6 @@ Please respond with this exact JSON structure:
 
           const activityData = {
             user_id: currentUser.id,
-            tenant_id: tenantId,
             activity_type: 'investigation_completion',
             task_id: currentScenario.id,
             task_title: currentScenario.title,
@@ -499,16 +487,6 @@ Please respond with this exact JSON structure:
       setShowCertificate(true);
     } else {
       navigate(createPageUrl("Scenarios"));
-    }
-  };
-
-  const getDifficultyColor = (difficulty) => {
-    switch (difficulty) {
-      case "Easy": return "text-green-400 bg-green-400/20";
-      case "Medium": return "text-yellow-400 bg-yellow-400/20";
-      case "Hard": return "text-red-400 bg-red-400/20";
-      case "Advanced": return "text-purple-400 bg-purple-400/20";
-      default: return "text-gray-400 bg-gray-400/20";
     }
   };
 
