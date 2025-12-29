@@ -6,104 +6,83 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 
-// **UPDATED**: Enhanced permission matrix with Super Admin context awareness
+// **UPDATED**: Enhanced permission matrix - all users get access except admin pages
 const PERMISSIONS_MATRIX = {
-  // Super Admin-only permissions (Global Level) - ALWAYS TRUE for Super Admin
-  'super_admin_access': { admin: true, tenant_admin: false, analyst: false },
-  'global_content_management': { admin: true, tenant_admin: false, analyst: false },
-  'tenant_management': { admin: true, tenant_admin: false, analyst: false },
-  'system_impersonation': { admin: true, tenant_admin: false, analyst: false },
+  // Super Admin-only permissions (Global Level)
+  'super_admin_access': { admin: true, tenant_admin: false, analyst: false, guest: false },
+  'global_content_management': { admin: true, tenant_admin: false, analyst: false, guest: false },
+  'tenant_management': { admin: true, tenant_admin: false, analyst: false, guest: false },
+  'system_impersonation': { admin: true, tenant_admin: false, analyst: false, guest: false },
   
-  // Environment Admin permissions (Tenant Level) - Super Admin gets these too when in context
-  'create_lessons': { admin: true, tenant_admin: true, analyst: false },
-  'create_quizzes': { admin: true, tenant_admin: true, analyst: false },
-  'create_scenarios': { admin: true, tenant_admin: true, analyst: false },
-  'create_live_logs': { admin: true, tenant_admin: true, analyst: false },
-  'invite_students': { admin: true, tenant_admin: true, analyst: false },
-  'manage_tenant_users': { admin: true, tenant_admin: true, analyst: false },
-  'tenant_configuration': { admin: true, tenant_admin: true, analyst: false },
+  // Environment Admin permissions (Tenant Level)
+  'create_lessons': { admin: true, tenant_admin: true, analyst: false, guest: false },
+  'create_quizzes': { admin: true, tenant_admin: true, analyst: false, guest: false },
+  'create_scenarios': { admin: true, tenant_admin: true, analyst: false, guest: false },
+  'create_live_logs': { admin: true, tenant_admin: true, analyst: false, guest: false },
+  'invite_students': { admin: true, tenant_admin: true, analyst: false, guest: false },
+  'manage_tenant_users': { admin: true, tenant_admin: true, analyst: false, guest: false },
+  'tenant_configuration': { admin: true, tenant_admin: true, analyst: false, guest: false },
   
-  // Feature-based permissions (depends on tenant's subscription tier) - Super Admin always gets access
-  'view_dashboard_logs': { admin: true, tenant_admin: true, analyst: 'feature:dashboard_logs' },
-  'view_theoretical_lessons': { admin: true, tenant_admin: true, analyst: 'feature:theoretical_lessons' },
-  'access_quizzes': { admin: true, tenant_admin: 'feature:quizzes', analyst: 'feature:quizzes' },
-  'access_scenarios': { admin: true, tenant_admin: 'feature:scenarios', analyst: 'feature:scenarios' },
-  'access_progress_tracking': { admin: true, tenant_admin: true, analyst: 'feature:progress_tracking' },
-  'access_certificates': { admin: true, tenant_admin: 'feature:certificates', analyst: 'feature:certificates' },
+  // **ALL USERS GET ACCESS** - No restrictions for regular features
+  'view_dashboard_logs': { admin: true, tenant_admin: true, analyst: true, guest: true },
+  'view_theoretical_lessons': { admin: true, tenant_admin: true, analyst: true, guest: true },
+  'access_quizzes': { admin: true, tenant_admin: true, analyst: true, guest: true },
+  'access_scenarios': { admin: true, tenant_admin: true, analyst: true, guest: true },
+  'access_progress_tracking': { admin: true, tenant_admin: true, analyst: true, guest: true },
+  'access_certificates': { admin: true, tenant_admin: true, analyst: true, guest: true },
 };
 
 /**
- * **ENHANCED**: Role determination with Super Admin context preservation
- * @param {object} user - The global user object from User.me().
- * @param {object} tenantContext - The user's context within a tenant (from TenantUser).
- * @returns {string} The user's effective role: 'admin', 'tenant_admin', or 'analyst'.
+ * **SIMPLIFIED**: Role determination - default to 'guest' for all users without tenant
  */
 export function getUserRole(user, tenantContext) {
-  // **CRITICAL**: Super Admin (Global) - ALWAYS keeps admin role even in tenant context
+  // Super Admin (Global)
   if (user?.role === 'admin') {
-    console.log('[PERMISSIONS] Super Admin detected - maintaining admin role regardless of tenant context');
-    return 'admin'; // Super Admin never loses admin privileges
+    console.log('[PERMISSIONS] Super Admin detected');
+    return 'admin';
   }
   
-  // **Level 2**: Check tenant context for specific role
+  // Check tenant context for specific role
   if (tenantContext?.role) {
-    return tenantContext.role; // This will be 'tenant_admin' or 'analyst'
+    return tenantContext.role; // 'tenant_admin' or 'analyst'
   }
   
-  // **Level 3**: Check if user is the designated admin for this tenant
+  // Check if user is the designated admin for this tenant
   if (tenantContext?.tenant?.admin_email && 
       user?.email?.toLowerCase() === tenantContext.tenant.admin_email.toLowerCase()) {
-    return 'tenant_admin'; // They are the designated Environment Admin
+    return 'tenant_admin';
   }
   
-  // **Level 4**: Default (Student/Analyst)
-  return 'analyst'; // Safest default for authenticated users
+  // **DEFAULT: All authenticated users are 'guest' with full feature access**
+  return 'guest';
 }
 
 /**
- * **ENHANCED**: Permission checking with Super Admin context awareness
- * Super Admin ALWAYS gets permission, but data filtering happens at component level
- * @param {string} userRole - The user's effective role ('admin', 'tenant_admin', 'analyst').
- * @param {string} permission - The permission key to check (e.g., 'super_admin_access').
- * @param {object} tenantInfo - The tenant object, containing feature_access.
- * @returns {boolean} - True if the user has permission, false otherwise.
+ * **SIMPLIFIED**: Permission checking - guests get access to all non-admin features
  */
 export function hasPermission(userRole, permission, tenantInfo) {
-  console.log(`[PERMISSIONS] Checking ${permission} for role ${userRole}:`, { tenantInfo: tenantInfo?.name });
+  console.log(`[PERMISSIONS] Checking ${permission} for role ${userRole}`);
 
-  // **SUPER ADMIN OVERRIDE**: Super Admin always gets access to everything
+  // Super Admin always gets access
   if (userRole === 'admin') {
-    console.log(`[PERMISSIONS] Super Admin granted ${permission} (override)`);
+    console.log(`[PERMISSIONS] Super Admin granted ${permission}`);
     return true;
   }
 
   const rule = PERMISSIONS_MATRIX[permission]?.[userRole];
 
-  // Rule is a direct boolean (true/false)
+  // Direct boolean rule
   if (typeof rule === 'boolean') {
     return rule;
   }
 
-  // Rule is feature-based, check against the tenant's subscription
-  if (typeof rule === 'string' && rule.startsWith('feature:')) {
-    if (!tenantInfo?.feature_access) {
-      console.log(`[PERMISSIONS] No feature access found for tenant, denying ${permission}`);
-      return false;
-    }
-    
-    const featureName = rule.replace('feature:', '');
-    const hasFeature = tenantInfo.feature_access[featureName];
-    console.log(`[PERMISSIONS] Feature ${featureName} for ${permission}: ${hasFeature}`);
-    return hasFeature;
-  }
-
-  // If no rule is found, deny by default
-  console.log(`[PERMISSIONS] Unknown rule type for ${permission}, denying access`);
+  // If no rule found, deny by default
+  console.log(`[PERMISSIONS] No rule found for ${permission}, denying access`);
   return false;
 }
 
 /**
- * **ENHANCED** Role guard with Super Admin context preservation
+ * **SIMPLIFIED** Role guard - all authenticated users get access to non-admin features
  */
 export function RoleGuard({ children, permission, fallbackComponent = null }) {
   const [loading, setLoading] = useState(true);
@@ -119,22 +98,19 @@ export function RoleGuard({ children, permission, fallbackComponent = null }) {
         let finalTenantContext = null;
         let finalTenantInfo = null;
 
-        // **ENHANCED**: Super Admin Detection with Context Preservation
+        // Super Admin handling
         if (currentUser.role === 'admin') {
-          console.log('[ROLE GUARD] Super Admin detected - maintaining full permissions');
+          console.log('[ROLE GUARD] Super Admin detected');
           
-          // Check if there's a stored tenant context from AdminEnvironmentAccess
           const storedTenantContext = sessionStorage.getItem('current_tenant_context');
           if (storedTenantContext) {
             try {
               finalTenantInfo = JSON.parse(storedTenantContext);
-              console.log(`[ROLE GUARD] Using stored tenant context: ${finalTenantInfo.name}`);
             } catch (e) {
               console.error('[ROLE GUARD] Error parsing stored tenant context:', e);
             }
           }
           
-          // Also check for impersonation data (from Super Admin Dashboard)
           const impersonationData = sessionStorage.getItem('superadmin_impersonation');
           if (impersonationData && !finalTenantInfo) {
             try {
@@ -142,79 +118,54 @@ export function RoleGuard({ children, permission, fallbackComponent = null }) {
               const tenants = await Tenant.filter({ id: impersonation.target_tenant_id });
               if (tenants.length > 0) {
                 finalTenantInfo = tenants[0];
-                console.log(`[ROLE GUARD] Using impersonation tenant context: ${finalTenantInfo.name}`);
               }
             } catch (e) {
               console.error('[ROLE GUARD] Error parsing impersonation data:', e);
             }
           }
 
-          // **CRITICAL**: For Super Admin, we create a pseudo tenant context for data filtering
-          // but they maintain admin role for permissions
           if (finalTenantInfo) {
             finalTenantContext = {
               tenant_id: finalTenantInfo.id,
-              role: 'tenant_admin', // This is for data context, not permission reduction
+              role: 'tenant_admin',
               tenant: finalTenantInfo,
-              is_super_admin_context: true // Flag to indicate this is Super Admin in context
+              is_super_admin_context: true
             };
           }
         } else {
-          // For regular users, find their tenant context
+          // **CHANGED**: For regular users, try to find tenant but don't require it
           const tenantUsers = await TenantUser.filter({ user_id: currentUser.id });
           const activeTenantUsers = tenantUsers.filter(tu => ['active', 'pending'].includes(tu.status));
           
-          console.log(`[ROLE GUARD] Found ${activeTenantUsers.length} active tenant associations`);
-          
-          if (activeTenantUsers.length === 0) {
-            console.log('[ROLE GUARD] No active tenant associations found');
-            setAccessInfo({ reason: 'not_authorized', message: 'No active environment access' });
-            setHasAccess(false);
-            setLoading(false);
-            return;
+          if (activeTenantUsers.length > 0) {
+            const tenantUser = activeTenantUsers[0];
+            const tenants = await Tenant.filter({ id: tenantUser.tenant_id });
+            
+            if (tenants.length > 0 && tenants[0].status === 'active') {
+              finalTenantInfo = tenants[0];
+              finalTenantContext = { ...tenantUser, tenant: finalTenantInfo };
+            }
           }
           
-          // Use the first active tenant user for context
-          const tenantUser = activeTenantUsers[0];
-
-          if (['removed', 'suspended', 'inactive'].includes(tenantUser.status)) {
-            console.log(`[ROLE GUARD] User status is ${tenantUser.status}`);
-            setAccessInfo({ reason: tenantUser.status, message: `Account is ${tenantUser.status}` });
-            setHasAccess(false);
-            setLoading(false);
-            return;
-          }
-          
-          const tenants = await Tenant.filter({ id: tenantUser.tenant_id });
-          if (tenants.length === 0 || tenants[0].status !== 'active') {
-            console.log('[ROLE GUARD] Tenant not found or inactive');
-            setAccessInfo({ reason: 'environment_inactive', message: 'Environment is not active' });
-            setHasAccess(false);
-            setLoading(false);
-            return;
-          }
-          
-          finalTenantInfo = tenants[0];
-          finalTenantContext = { ...tenantUser, tenant: finalTenantInfo };
+          // **IMPORTANT**: No tenant is OK - user will be treated as 'guest' with full access
+          console.log('[ROLE GUARD] User has no tenant context - treating as guest with full access');
         }
         
-        // **IMPORTANT**: getUserRole now preserves Super Admin role even with tenant context
         const finalRole = getUserRole(currentUser, finalTenantContext);
         const access = hasPermission(finalRole, permission, finalTenantInfo);
 
-        console.log(`[ROLE GUARD] Final decision - Role: ${finalRole}, Permission: ${permission}, Access: ${access}, Context: ${finalTenantInfo?.name || 'Global'}`);
+        console.log(`[ROLE GUARD] Final decision - Role: ${finalRole}, Permission: ${permission}, Access: ${access}`);
         
         setHasAccess(access);
         setAccessInfo({ 
           role: finalRole, 
-          tenant: finalTenantInfo?.name,
+          tenant: finalTenantInfo?.name || 'No tenant',
           permission: permission,
-          granted: access,
-          is_super_admin_context: finalTenantContext?.is_super_admin_context || false
+          granted: access
         });
 
       } catch (error) {
-        console.error(`[ROLE GUARD] Error during access check for permission "${permission}":`, error);
+        console.error(`[ROLE GUARD] Error during access check:`, error);
         setAccessInfo({ reason: 'system_error', message: 'System error during permission check' });
         setHasAccess(false);
       } finally {
@@ -238,7 +189,6 @@ export function RoleGuard({ children, permission, fallbackComponent = null }) {
       return fallbackComponent;
     }
     
-    // Show clear access denied message instead of blank screen
     return (
       <div className="flex justify-center items-center min-h-screen bg-slate-900 p-4">
         <Card className="bg-slate-800 border-slate-700 text-center p-8 max-w-md">

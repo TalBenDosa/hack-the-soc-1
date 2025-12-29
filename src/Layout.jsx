@@ -20,35 +20,23 @@ import {
   UserCircle,
   Menu,
   X,
-  ShieldCheck, // for SuperAdmin
-  ClipboardList, // Restoring Quizzes icon
-  Star, // Added for Tier icon
+  ShieldCheck,
+  ClipboardList,
+  Star,
 } from 'lucide-react';
 import { RoleGuard } from './components/auth/RoleBasedAccess';
 
 const Sidebar = ({ isOpen, setIsOpen, userContext, handleLogout, featureAccess, isSuperAdmin }) => {
   const location = useLocation();
 
-  // featureAccess and isSuperAdmin are now passed as props from Layout
-
-  // **BASIC NAVIGATION** - Always available
+  // **ALL FEATURES ALWAYS AVAILABLE**
   const navLinks = [
     { name: 'SOC Dashboard', href: createPageUrl('Dashboard'), icon: LayoutDashboard },
     { name: 'Learning Path', href: createPageUrl('LearningPath'), icon: BookOpen },
+    { name: 'Progress', href: createPageUrl('Progress'), icon: BarChart2 },
+    { name: 'Scenarios', href: createPageUrl('Scenarios'), icon: Target },
+    { name: 'Quizzes', href: createPageUrl('QuizPage'), icon: ClipboardList },
   ];
-
-  // SIEM Learning Path has been removed completely from navigation
-
-  // **CONDITIONAL NAVIGATION** - Based on subscription tier
-  const conditionalLinks = [];
-
-  if (featureAccess.progress_tracking) {
-    conditionalLinks.push({ name: 'Progress', href: createPageUrl('Progress'), icon: BarChart2 });
-  }
-
-  if (featureAccess.scenarios) {
-    conditionalLinks.push({ name: 'Scenarios', href: createPageUrl('Scenarios'), icon: Target });
-  }
 
   // **ADMIN LINKS** - Only for admins and tenant admins
   const adminLinks = [];
@@ -93,7 +81,7 @@ const Sidebar = ({ isOpen, setIsOpen, userContext, handleLogout, featureAccess, 
         <nav className="flex-grow px-2 py-4 space-y-2">
           <p className="px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Navigation</p>
 
-          {/* Always Available Links */}
+          {/* All Links - Always Available */}
           {navLinks.map((link) => (
             <Link
               key={link.name}
@@ -105,38 +93,8 @@ const Sidebar = ({ isOpen, setIsOpen, userContext, handleLogout, featureAccess, 
             >
               <link.icon className="w-5 h-5" />
               {link.name}
-              {/* Removed link.premium check as SIEM Learning Path is removed and it was the only link with this property */}
             </Link>
           ))}
-
-          {/* Conditional Links Based on Subscription */}
-          {conditionalLinks.map((link) => (
-            <Link
-              key={link.name}
-              to={link.href}
-              onClick={() => setIsOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                location.pathname === link.href ? 'bg-teal-500/10 text-teal-400' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <link.icon className="w-5 h-5" />
-              {link.name}
-            </Link>
-          ))}
-
-          {/* Quizzes Link - Only if feature enabled */}
-          {featureAccess.quizzes && (
-            <Link
-              to={createPageUrl('QuizPage')}
-              onClick={() => setIsOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                location.pathname === createPageUrl('QuizPage') ? 'bg-teal-500/10 text-teal-400' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <ClipboardList className="w-5 h-5" />
-              Quizzes
-            </Link>
-          )}
 
           {/* Admin Links */}
           {adminLinks.map((link) => (
@@ -187,7 +145,6 @@ const Sidebar = ({ isOpen, setIsOpen, userContext, handleLogout, featureAccess, 
                     </span>
                 </div>
 
-                {/* **ENHANCED**: Special display for Super Admin impersonation */}
                 {userContext.isImpersonating && userContext.impersonatedTenant && (
                     <div className="bg-yellow-600/30 p-3 rounded-lg border border-yellow-600/50">
                         <div className="flex items-center gap-2 mb-2">
@@ -200,9 +157,7 @@ const Sidebar = ({ isOpen, setIsOpen, userContext, handleLogout, featureAccess, 
                     </div>
                 )}
 
-                {/* Show organization details for non-super admins or when not impersonating */}
-                {((!userContext.isImpersonating && userContext.user.role !== 'admin' && userContext.tenant) ||
-                  (userContext.isImpersonating && userContext.impersonatedTenant)) && (
+                {userContext.tenant && (
                     <>
                         <div className="flex items-center gap-2">
                             <div className="w-4 h-4 flex items-center justify-center">
@@ -212,17 +167,7 @@ const Sidebar = ({ isOpen, setIsOpen, userContext, handleLogout, featureAccess, 
                         </div>
                         <div className="pl-6 -mt-2">
                             <span className="text-white font-medium">
-                                {userContext.isImpersonating ? userContext.impersonatedTenant.name : userContext.tenant.name}
-                            </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <Star className="w-4 h-4 text-teal-400 flex-shrink-0" />
-                            <span className="text-slate-400 text-xs">Subscription:</span>
-                        </div>
-                        <div className="pl-6 -mt-2">
-                            <span className="text-teal-300 font-medium capitalize">
-                                {userContext.isImpersonating ? userContext.impersonatedTenant.subscription_tier : userContext.tenant.subscription_tier} Tier
+                                {userContext.tenant.name}
                             </span>
                         </div>
                     </>
@@ -249,54 +194,17 @@ export default function Layout({ children, currentPageName }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Get feature access based on tenant subscription
-  const getTenantFeatureAccess = () => {
-    if (!userContext?.impersonatedTenant && !userContext?.tenant) {
-      // No tenant context - show basic features and default quizzes to true
-      return {
-        dashboard_logs: true,
-        theoretical_lessons: true,
-        quizzes: true,
-        scenarios: true,
-        progress_tracking: true,
-        certificates: false,
-        // siem_learning_path is removed
-      };
-    }
-
-    const currentTenant = userContext.impersonatedTenant || userContext.tenant;
-    // If tenant.feature_access exists, use it. Otherwise, default to these settings.
-    const baseAccess = currentTenant.feature_access || {
-      dashboard_logs: true,
-      theoretical_lessons: true,
-      quizzes: true,
-      scenarios: true,
-      progress_tracking: true,
-      certificates: false
-    };
-
-    // SIEM Learning Path availability logic is removed
-    return {
-      ...baseAccess,
-      // siem_learning_path: currentTenant.subscription_tier === 'full' // Removed
-    };
+  // **ALL FEATURES ALWAYS ENABLED**
+  const featureAccess = {
+    dashboard_logs: true,
+    theoretical_lessons: true,
+    quizzes: true,
+    scenarios: true,
+    progress_tracking: true,
+    certificates: true,
   };
 
-  // Calculate featureAccess and isSuperAdmin based on userContext state
-  const featureAccess = userContext
-    ? getTenantFeatureAccess()
-    : { // Default access if userContext is null (e.g., initial render)
-        dashboard_logs: true,
-        theoretical_lessons: true,
-        quizzes: true,
-        scenarios: true,
-        progress_tracking: true,
-        certificates: false,
-        // siem_learning_path is removed
-      };
-
   const isSuperAdmin = userContext?.user?.role === 'admin';
-
 
   useEffect(() => {
     const fetchUserContext = async () => {
@@ -324,11 +232,10 @@ export default function Layout({ children, currentPageName }) {
             if (tenants.length > 0) {
               tenant = tenants[0];
               role = tenantContext.role === 'tenant_admin' ? 'Environment Admin' : 'Student';
-            } else {
-              role = 'Unassigned'; // User logged in but tenant not found
             }
           } else {
-            role = 'Unassigned'; // User logged in but not assigned to an active tenant
+            // **CHANGED**: No tenant is OK - user gets full access as 'Student'
+            role = 'Student';
           }
         } else {
             role = "Super Admin";
@@ -344,7 +251,6 @@ export default function Layout({ children, currentPageName }) {
         });
       } catch (error) {
         console.error("User not authenticated or error fetching context:", error);
-        // Redirect to login if user not authenticated, unless on specific allowed public pages
         if (currentPageName && !['PrivacyPolicy', 'CookiePolicy', 'AccessibilityStatement', 'DataRequestForm', 'CompletePrivacyCompliance', 'JoinTenant'].includes(currentPageName)) {
             window.location.href = '/';
         }
@@ -360,16 +266,12 @@ export default function Layout({ children, currentPageName }) {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [currentPageName]); // Added currentPageName as a dependency
+  }, [currentPageName]);
 
-  // This useEffect handles the welcome screen redirection.
-  // It runs whenever the user context is updated or the page changes.
   useEffect(() => {
     if (userContext?.user) {
       const welcomeShown = sessionStorage.getItem('session_welcome_shown');
 
-      // Only redirect if user is a regular user (not Super Admin), not currently impersonating,
-      // the welcome screen hasn't been shown in this session, and they aren't already on the welcome page.
       if (
         userContext.user.role !== 'admin' &&
         !userContext.isImpersonating &&
@@ -383,25 +285,21 @@ export default function Layout({ children, currentPageName }) {
     }
   }, [userContext, currentPageName, navigate]);
 
-
   const handleLogout = async () => {
-    // Clear session storage on logout to ensure welcome screen shows next time
     sessionStorage.removeItem('session_welcome_shown');
-    sessionStorage.removeItem('superadmin_impersonation'); // Also clear impersonation just in case
-    localStorage.removeItem('tenant_context'); // Clear any cached tenant context too
+    sessionStorage.removeItem('superadmin_impersonation');
+    localStorage.removeItem('tenant_context');
     await User.logout();
-    window.location.href = '/'; // Force a reload to the login page
+    window.location.href = '/';
   };
 
   const handleExitImpersonation = () => {
     console.log('[Layout] Exiting impersonation mode.');
     sessionStorage.removeItem('superadmin_impersonation');
     localStorage.removeItem('tenant_context');
-    // Force a navigation and reload to the Super Admin dashboard
     window.location.href = createPageUrl('SuperAdminDashboard');
   };
 
-  // Exclude layout for specific pages
   const noLayoutPages = [
     'StudentWelcome', 'UnassignedUserHandler', 'JoinTenant', 'AcceptAdminInvitation', 'AdminEnvironmentAccess', 'CompletePrivacyCompliance',
     'PrivacyPolicy', 'CookiePolicy', 'AccessibilityStatement', 'DataRequestForm',
@@ -414,15 +312,14 @@ export default function Layout({ children, currentPageName }) {
   return (
     <TenantMiddleware>
       <div className="flex h-screen bg-slate-950">
-        {/* Render Sidebar only if userContext is available (meaning user is logged in and context loaded) */}
         {userContext && (
             <Sidebar
                 isOpen={isSidebarOpen}
                 setIsOpen={setIsSidebarOpen}
                 userContext={userContext}
                 handleLogout={handleLogout}
-                featureAccess={featureAccess} // Pass featureAccess derived in Layout
-                isSuperAdmin={isSuperAdmin}   // Pass isSuperAdmin derived in Layout
+                featureAccess={featureAccess}
+                isSuperAdmin={isSuperAdmin}
             />
         )}
 
