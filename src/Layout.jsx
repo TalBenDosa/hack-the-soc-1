@@ -251,9 +251,7 @@ export default function Layout({ children, currentPageName }) {
         });
       } catch (error) {
         console.error("User not authenticated or error fetching context:", error);
-        if (currentPageName && !['PrivacyPolicy', 'CookiePolicy', 'AccessibilityStatement', 'DataRequestForm', 'CompletePrivacyCompliance', 'JoinTenant'].includes(currentPageName)) {
-            window.location.href = '/';
-        }
+        // REMOVED: Don't redirect to login - let authenticated users access content even without tenant
       }
     };
 
@@ -269,20 +267,7 @@ export default function Layout({ children, currentPageName }) {
   }, [currentPageName]);
 
   useEffect(() => {
-    if (userContext?.user) {
-      const welcomeShown = sessionStorage.getItem('session_welcome_shown');
-
-      if (
-        userContext.user.role !== 'admin' &&
-        !userContext.isImpersonating &&
-        !welcomeShown &&
-        currentPageName !== 'StudentWelcome'
-      ) {
-        sessionStorage.setItem('session_welcome_shown', 'true');
-        console.log('[Layout] New session for student/tenant-admin. Redirecting to Welcome Screen.');
-        navigate(createPageUrl('StudentWelcome'));
-      }
-    }
+    // REMOVED: No automatic redirects to welcome screen - let users access all content freely
   }, [userContext, currentPageName, navigate]);
 
   const handleLogout = async () => {
