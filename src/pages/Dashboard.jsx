@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Investigation, Scenario, UserProgress, User, TenantUser } from "@/entities/all"; // Added User and TenantUser
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,13 +75,17 @@ export default function Dashboard() {
           }
         }
       } else {
-        // Regular user - get their tenant
-        const tenantUsers = await TenantUser.filter({ user_id: currentUser.id, status: 'active' });
-        currentTenantId = tenantUsers.length > 0 ? tenantUsers[0].tenant_id : null;
-        console.log('[DASHBOARD] Regular user tenant:', currentTenantId);
+        // Regular user - try to get their tenant but don't fail if not found
+        try {
+          const tenantUsers = await TenantUser.filter({ user_id: currentUser.id, status: 'active' });
+          currentTenantId = tenantUsers.length > 0 ? tenantUsers[0].tenant_id : null;
+          console.log('[DASHBOARD] Regular user tenant:', currentTenantId);
+        } catch (error) {
+          console.log('[DASHBOARD] No tenant found for user, continuing without tenant context');
+        }
       }
 
-      // **ENHANCED**: Load data with proper context filtering
+      // **SIMPLIFIED**: Load data with or without tenant
       let investigationsData = [];
       let scenariosData = [];
       let progressData = [];
@@ -93,14 +96,12 @@ export default function Dashboard() {
         scenariosData = await Scenario.filter({ tenant_id: currentTenantId }, null, 6);
         
         if (currentUser.role === 'admin') {
-          // Super Admin viewing specific tenant - get SA's progress FOR THAT TENANT's context
           progressData = await UserProgress.filter({ 
             user_id: currentUser.id,
             tenant_id: currentTenantId,
             is_super_admin_activity: true 
           });
         } else {
-          // Regular user's progress for their tenant
           progressData = await UserProgress.filter({ 
             user_id: currentUser.id,
             tenant_id: currentTenantId,
@@ -108,24 +109,14 @@ export default function Dashboard() {
           });
         }
         
-        console.log(`[DASHBOARD] Loaded tenant ${currentTenantId} data:`, {
-          investigations: investigationsData.length,
-          scenarios: scenariosData.length,
-          progress: progressData.length
-        });
-      } else if (currentUser.role === 'admin') {
-        // Super Admin global view (no specific tenant context or impersonation)
+        console.log(`[DASHBOARD] Loaded tenant ${currentTenantId} data`);
+      } else {
+        // **NO TENANT**: Load all public data
         investigationsData = await Investigation.list("-created_date", 10);
         scenariosData = await Scenario.list(null, 6);
+        progressData = await UserProgress.filter({ user_id: currentUser.id });
         
-        // Super Admin's personal/global progress
-        progressData = await UserProgress.filter({ 
-          user_id: currentUser.id,
-          tenant_id: null, // Global progress, not associated with any specific tenant
-          is_super_admin_activity: true // This is SA's activity outside of a tenant's context
-        });
-        
-        console.log('[DASHBOARD] Loaded global data for Super Admin');
+        console.log('[DASHBOARD] Loaded data without tenant context');
       }
       
       setInvestigations(investigationsData);

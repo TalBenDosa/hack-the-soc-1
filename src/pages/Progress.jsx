@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { User, UserProgress, TenantUser } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,52 +29,38 @@ export default function ProgressPage() {
     try {
       const user = await User.me();
 
-      // --- START: ROBUST TENANT ID RETRIEVAL (Same as gamificationService) ---
+      // **SIMPLIFIED**: Try to get tenant but don't require it
       let tenantId = null;
 
-      // Strategy A: Try localStorage first (fastest)
-      const tenantContextString = localStorage.getItem('tenant_context');
-      if (tenantContextString) {
-        try {
+      try {
+        const tenantContextString = localStorage.getItem('tenant_context');
+        if (tenantContextString) {
           const tenantContext = JSON.parse(tenantContextString);
           tenantId = tenantContext.tenant_id;
-        } catch (parseError) {
-          console.warn('[PROGRESS] Failed to parse tenant context from localStorage:', parseError);
         }
-      }
 
-      // Strategy B: Fallback to querying TenantUser if localStorage fails
-      if (!tenantId) {
-        console.log('[PROGRESS] Tenant context not in localStorage. Falling back to DB query...');
-        if (TenantUser && typeof TenantUser.filter === 'function') {
+        if (!tenantId && TenantUser && typeof TenantUser.filter === 'function') {
           const tenantUsers = await TenantUser.filter({ user_id: user.id, status: 'active' });
           if (tenantUsers && tenantUsers.length > 0) {
             tenantId = tenantUsers[0].tenant_id;
-            console.log('[PROGRESS] Tenant context found via DB query:', tenantId);
-            // Re-set localStorage for this session to speed up subsequent calls
             localStorage.setItem('tenant_context', JSON.stringify({ tenant_id: tenantId }));
           }
         }
+      } catch (error) {
+        console.log('[PROGRESS] Could not find tenant, continuing without it:', error);
       }
 
-      // Final Check: If no tenantId is found after all strategies, then it's a critical error.
-      if (!tenantId) {
-        throw new Error("User context not found. Please log in again.");
-      }
-      // --- END: ROBUST TENANT ID RETRIEVAL ---
+      console.log(`[PROGRESS] Fetching progress for user: ${user.id}, tenant: ${tenantId || 'none'}`);
 
-      console.log(`[PROGRESS] Fetching progress for user: ${user.id} in tenant: ${tenantId}`);
-
-      // Add null check before calling filter
       if (!UserProgress || typeof UserProgress.filter !== 'function') {
         console.error('[PROGRESS] UserProgress entity not available');
         throw new Error("User progress system not available");
       }
 
-      const progressRecords = await UserProgress.filter({
-        user_id: user.id,
-        tenant_id: tenantId
-      });
+      // Fetch progress with or without tenant
+      const progressRecords = tenantId 
+        ? await UserProgress.filter({ user_id: user.id, tenant_id: tenantId })
+        : await UserProgress.filter({ user_id: user.id });
 
       if (progressRecords && progressRecords.length > 0) {
         console.log('[PROGRESS] Found user progress record:', progressRecords[0]);
