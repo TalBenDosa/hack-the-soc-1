@@ -61,17 +61,14 @@ export default function ProgressPage() {
       const progressRecords = await UserProgress.filter({ user_id: user.id });
 
       if (progressRecords && progressRecords.length > 0) {
-        console.log('[PROGRESS] ✅ Found user progress record by user_id');
+        console.log('[PROGRESS] ✅ Found user progress record');
         setUserProgress(progressRecords[0]);
       } else {
-        console.log('[PROGRESS] ✅ No progress found - creating new record for user');
-        
-        // Create new progress record for this user
-        const newProgress = await UserProgress.create({
+        console.log('[PROGRESS] ✅ No progress record - showing default view');
+        // Show default empty progress without creating DB record
+        setUserProgress({
           user_id: user.id,
           user_full_name: user.full_name,
-          tenant_id: tenantId || null,
-          is_super_admin_activity: false,
           points: 0,
           level: 1,
           points_to_next_level: 100,
@@ -88,14 +85,8 @@ export default function ProgressPage() {
             incident_response: 10,
             threat_hunting: 10
           },
-          weekly_activity: [],
-          quiz_attempts: 0,
-          quiz_completions: 0,
-          total_quiz_points: 0
+          weekly_activity: []
         });
-        
-        console.log('[PROGRESS] ✅ Created new progress record:', newProgress.id);
-        setUserProgress(newProgress);
       }
     } catch (err) {
       console.error("Error fetching progress data:", err);
