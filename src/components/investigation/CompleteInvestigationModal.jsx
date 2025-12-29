@@ -81,7 +81,7 @@ export default function CompleteInvestigationModal({
             doc.setFontSize(14);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(99, 102, 241);
-            doc.text('📋 Scenario Context', margin, yPos);
+            doc.text('Scenario Context', margin, yPos);
             yPos += 8;
             doc.setFontSize(11);
             doc.setFont(undefined, 'bold');
@@ -171,7 +171,7 @@ export default function CompleteInvestigationModal({
                 doc.setFontSize(14);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(99, 102, 241);
-                doc.text('📝 Attack Narrative', margin, yPos);
+                doc.text('Attack Narrative', margin, yPos);
                 yPos += 8;
                 doc.setFontSize(10);
                 doc.setFont(undefined, 'normal');
@@ -192,7 +192,7 @@ export default function CompleteInvestigationModal({
                 doc.setFontSize(14);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(168, 85, 247);
-                doc.text('🔍 Technical Findings', margin, yPos);
+                doc.text('Technical Findings', margin, yPos);
                 yPos += 8;
                 doc.setFontSize(10);
                 doc.setFont(undefined, 'normal');
@@ -213,7 +213,7 @@ export default function CompleteInvestigationModal({
                 doc.setFontSize(14);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(239, 68, 68);
-                doc.text(`🚨 Indicators of Compromise (${report.iocs.length})`, margin, yPos);
+                doc.text(`Indicators of Compromise (${report.iocs.length})`, margin, yPos);
                 yPos += 8;
                 doc.setFontSize(9);
                 doc.setFont(undefined, 'normal');
@@ -241,7 +241,7 @@ export default function CompleteInvestigationModal({
                 doc.setFontSize(14);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(20, 184, 166);
-                doc.text('⚖️ Final Verdict', margin, yPos);
+                doc.text('Final Verdict', margin, yPos);
                 yPos += 8;
                 doc.setFontSize(12);
                 doc.setFont(undefined, 'bold');
@@ -343,7 +343,7 @@ export default function CompleteInvestigationModal({
             doc.setFontSize(14);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(34, 197, 94);
-            doc.text('✅ Key Strengths', margin, yPos);
+            doc.text('Key Strengths', margin, yPos);
             yPos += 8;
             doc.setFontSize(10);
             doc.setFont(undefined, 'normal');
@@ -368,7 +368,7 @@ export default function CompleteInvestigationModal({
             doc.setFontSize(14);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(234, 179, 8);
-            doc.text('⚠️ Areas for Improvement', margin, yPos);
+            doc.text('Areas for Improvement', margin, yPos);
             yPos += 8;
             doc.setFontSize(10);
             doc.setFont(undefined, 'normal');
@@ -393,7 +393,7 @@ export default function CompleteInvestigationModal({
             doc.setFontSize(14);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(99, 102, 241);
-            doc.text('💡 Professional Approach Recommendation', margin, yPos);
+            doc.text('Professional Approach Recommendation', margin, yPos);
             yPos += 8;
             doc.setFontSize(10);
             doc.setFont(undefined, 'normal');
