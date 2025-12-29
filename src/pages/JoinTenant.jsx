@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { base44 } from '@/api/base44Client';
 import { User, Tenant, TenantUser } from '@/entities/all';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,21 +11,20 @@ export default function JoinTenant() {
     const [joining, setJoining] = useState(false);
     const [result, setResult] = useState(null);
     const [tenantInfo, setTenantInfo] = useState(null);
-    const [userRole, setUserRole] = useState(null); // This state variable is declared but not explicitly used in the provided logic.
+    const [userRole, setUserRole] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         const initializeJoin = async () => {
-            // Handle both hash routing and regular routing
-            const hashSearch = window.location.hash.includes('?') 
-                ? window.location.hash.split('?')[1] 
-                : window.location.search.substring(1);
-            const urlParams = new URLSearchParams(hashSearch);
+            // Parse URL parameters from hash
+            const hashParts = window.location.hash.split('?');
+            const urlParams = new URLSearchParams(hashParts[1] || '');
             const code = urlParams.get('code');
             const isAdmin = urlParams.get('admin') === 'true';
             const tenantName = urlParams.get('tenant_name');
             
             console.log('[JOIN TENANT] URL Params:', { code, isAdmin, tenantName });
+            console.log('[JOIN TENANT] Full hash:', window.location.hash);
             
             if (!code) {
                 setResult({ success: false, message: 'Invalid invitation link - missing code parameter.' });
@@ -43,10 +43,10 @@ export default function JoinTenant() {
                 // Check if user is logged in
                 const currentUser = await User.me();
                 if (!currentUser) {
-                    // User not logged in - redirect to home/login page
-                    // The home page should detect the pending invite and handle it after login
+                    // User not logged in - redirect to login with return URL
                     console.log('[JOIN TENANT] User not logged in, redirecting to login...');
-                    window.location.href = '/#/';
+                    const returnUrl = window.location.hash; // Save current hash
+                    await base44.auth.redirectToLogin(returnUrl);
                     return;
                 }
                 
@@ -55,8 +55,9 @@ export default function JoinTenant() {
                 handleJoinTenant(code, isAdmin, tenantName);
             } catch (error) {
                 console.error('[JOIN TENANT] Initialization error:', error);
-                // User not logged in, redirect to home/login
-                window.location.href = '/#/';
+                // User not logged in, redirect with return URL
+                const returnUrl = window.location.hash;
+                await base44.auth.redirectToLogin(returnUrl);
             }
         };
         
@@ -68,12 +69,11 @@ export default function JoinTenant() {
             setLoading(true);
             console.log('[JOIN TENANT] Processing invitation with code:', code, 'Admin:', isAdmin, 'Expected tenant:', expectedTenantName);
 
-            // Get current user (should already be logged in from useEffect check)
+            // Get current user
             const currentUser = await User.me();
-
             console.log('[JOIN TENANT] Current user:', currentUser.email, 'Role:', currentUser.role);
 
-            // **CRITICAL FIX**: Find tenant by invite code AND validate it matches expected tenant
+            // Find tenant by invite code
             const tenants = await Tenant.filter({ unique_invite_code: code });
             if (tenants.length === 0) {
                 setResult({ success: false, message: 'Invalid or expired invitation code.' });
@@ -84,7 +84,7 @@ export default function JoinTenant() {
             const tenant = tenants[0];
             setTenantInfo(tenant);
             
-            // **VALIDATION**: If expected tenant name is provided, verify it matches
+            // Validate tenant name if provided
             if (expectedTenantName && tenant.name !== decodeURIComponent(expectedTenantName)) {
                 console.error('[JOIN TENANT] TENANT MISMATCH!', {
                     expected: decodeURIComponent(expectedTenantName),
@@ -107,18 +107,17 @@ export default function JoinTenant() {
                 code: tenant.unique_invite_code
             });
 
-            // Check if user is already in this specific tenant
+            // Check if user is already in this tenant
             const existingTenantUser = await TenantUser.filter({ 
                 tenant_id: tenant.id, 
                 user_id: currentUser.id 
             });
 
-            // If user is Super Admin (global admin), allow access to any tenant
+            // Super Admin handling
             if (currentUser.role === 'admin' && currentUser.email === 'Tal14997@gmail.com') {
                 console.log('[JOIN TENANT] ✅ Super Admin detected - processing access for tenant:', tenant.name);
                 
                 if (existingTenantUser.length > 0) {
-                    // Update existing record to ensure admin privileges
                     await TenantUser.update(existingTenantUser[0].id, {
                         role: 'tenant_admin',
                         status: 'active',
@@ -126,10 +125,8 @@ export default function JoinTenant() {
                         invited_by: 'superadmin_join_link_access',
                         join_date: new Date().toISOString()
                     });
-                    
                     console.log('[JOIN TENANT] ✅ Updated Super Admin access for tenant:', tenant.name);
                 } else {
-                    // Create new tenant user record for this specific tenant
                     await TenantUser.create({
                         tenant_id: tenant.id,
                         user_id: currentUser.id,
@@ -140,7 +137,6 @@ export default function JoinTenant() {
                         invited_by: 'superadmin_join_link_access',
                         join_date: new Date().toISOString()
                     });
-                    
                     console.log('[JOIN TENANT] ✅ Created Super Admin access for tenant:', tenant.name);
                 }
 
@@ -155,11 +151,10 @@ export default function JoinTenant() {
                 return;
             }
 
-            // For regular users - handle normal tenant assignment
+            // Regular user - check if already active
             if (existingTenantUser.length > 0) {
                 const existing = existingTenantUser[0];
                 
-                // If user is already active in this tenant
                 if (existing.status === 'active') {
                     setResult({
                         success: true,
@@ -171,7 +166,7 @@ export default function JoinTenant() {
                     return;
                 }
 
-                // If user was previously inactive/removed, reactivate them
+                // Reactivate if previously inactive
                 const newRole = isAdmin ? 'tenant_admin' : 'analyst';
                 const permissions = isAdmin ? ['create_lessons', 'create_quizzes', 'create_scenarios', 'create_live_logs', 'invite_students'] : [];
 
@@ -192,11 +187,10 @@ export default function JoinTenant() {
                 return;
             }
 
-            // For regular users - check if they're in OTHER tenants and this might be a conflict
+            // Check for multiple tenant membership for regular users
             const otherTenantUsers = await TenantUser.filter({ user_id: currentUser.id });
             const activeTenantUsers = otherTenantUsers.filter(tu => tu.status === 'active');
             
-            // For regular users (non-super admin), warn if they're joining multiple tenants
             if (activeTenantUsers.length > 0 && !isAdmin) {
                 const otherTenants = [];
                 for (const tu of activeTenantUsers) {
@@ -207,17 +201,16 @@ export default function JoinTenant() {
                 }
                 
                 console.log('[JOIN TENANT] Warning: Regular user joining multiple tenants:', otherTenants);
-                // For now, we'll allow it but show a warning
                 setResult({
                     success: false,
                     message: `You are already active in: ${otherTenants.join(', ')}. Please contact your administrator if you need access to multiple environments.`,
-                    showLogout: true // This is not directly used in the render logic, but will cause success=false to display the logout button.
+                    showLogout: true
                 });
                 setLoading(false);
                 return;
             }
 
-            // Create new tenant user record for regular users
+            // Create new tenant user
             const targetRole = isAdmin ? 'tenant_admin' : 'analyst';
             const targetPermissions = isAdmin ? ['create_lessons', 'create_quizzes', 'create_scenarios', 'create_live_logs', 'invite_students'] : [];
             
@@ -252,14 +245,14 @@ export default function JoinTenant() {
 
     const handleRedirect = () => {
         setJoining(true);
-        // Redirect to main dashboard
+        // Clear pending invite and redirect to home
+        sessionStorage.removeItem('pending_tenant_invite');
         window.location.href = '/';
     };
 
     const handleLogout = async () => {
         try {
-            await User.logout();
-            window.location.href = '/';
+            await base44.auth.logout();
         } catch (error) {
             console.error('Logout error:', error);
         }
@@ -285,7 +278,7 @@ export default function JoinTenant() {
                     <div className="flex justify-center mb-4">
                         {result?.success ? (
                             <div className="bg-green-500/20 p-3 rounded-full">
-                                {result.role === 'Super Admin' ? ( // Updated from 'Super Admin (Multi-Tenant)'
+                                {result.role === 'Super Admin' ? (
                                     <Crown className="w-8 h-8 text-yellow-400" />
                                 ) : (
                                     <CheckCircle className="w-8 h-8 text-green-400" />
@@ -316,7 +309,6 @@ export default function JoinTenant() {
                                 <p className="text-sm text-slate-400">
                                     Role: <span className="text-teal-300 font-medium">{result.role}</span>
                                 </p>
-                                {/* Updated conditional check for admin role display */}
                                 {(result.role === 'Environment Admin' || result.role === 'Super Admin') && (
                                     <p className="text-xs text-yellow-300 mt-2">
                                         You have full administrative access to this environment.

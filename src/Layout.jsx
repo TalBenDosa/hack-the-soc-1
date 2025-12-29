@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -346,7 +345,7 @@ export default function Layout({ children, currentPageName }) {
       } catch (error) {
         console.error("User not authenticated or error fetching context:", error);
         // Redirect to login if user not authenticated, unless on specific allowed public pages
-        if (currentPageName && !['PrivacyPolicy', 'CookiePolicy', 'AccessibilityStatement', 'DataRequestForm', 'CompletePrivacyCompliance'].includes(currentPageName)) {
+        if (currentPageName && !['PrivacyPolicy', 'CookiePolicy', 'AccessibilityStatement', 'DataRequestForm', 'CompletePrivacyCompliance', 'JoinTenant'].includes(currentPageName)) {
             window.location.href = '/';
         }
       }
