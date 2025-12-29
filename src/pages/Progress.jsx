@@ -28,8 +28,13 @@ export default function ProgressPage() {
     setError(null);
     try {
       const user = await User.me();
+      if (!user) {
+        setError("User context not found. Please log in again.");
+        setLoading(false);
+        return;
+      }
 
-      // **SIMPLIFIED**: Try to get tenant but don't require it
+      // Try to get tenant but don't require it
       let tenantId = null;
 
       try {
@@ -43,7 +48,6 @@ export default function ProgressPage() {
           const tenantUsers = await TenantUser.filter({ user_id: user.id, status: 'active' });
           if (tenantUsers && tenantUsers.length > 0) {
             tenantId = tenantUsers[0].tenant_id;
-            localStorage.setItem('tenant_context', JSON.stringify({ tenant_id: tenantId }));
           }
         }
       } catch (error) {
@@ -57,42 +61,42 @@ export default function ProgressPage() {
         throw new Error("User progress system not available");
       }
 
-      // Fetch progress by user_id (works for all users, with or without tenant)
+      // Fetch any progress record for this user
       const progressRecords = await UserProgress.filter({ user_id: user.id });
 
       if (progressRecords && progressRecords.length > 0) {
         console.log('[PROGRESS] ✅ Found user progress record');
         setUserProgress(progressRecords[0]);
       } else {
-        console.log('[PROGRESS] ✅ No progress found - creating new record');
-        // Create new progress record for user
-        const newProgress = await UserProgress.create({
+        console.log('[PROGRESS] ✅ No progress record found - creating new one');
+        // Create new progress record with tenant_id=null if unassigned
+        const newProgressRecord = await UserProgress.create({
           user_id: user.id,
           user_full_name: user.full_name,
           tenant_id: tenantId,
           is_super_admin_activity: false,
-          points: 0,
-          level: 1,
-          points_to_next_level: 100,
           total_scenarios_completed: 0,
           total_scenarios_attempted: 0,
           average_score: 0,
-          current_streak: 0,
-          longest_streak: 0,
           total_time_spent: 0,
-          achievements: [],
+          points: 0,
+          level: 1,
+          points_to_next_level: 100,
           skill_levels: {
             malware_detection: 10,
             network_analysis: 10,
             incident_response: 10,
-            threat_hunting: 10
+            threat_hunting: 10,
           },
-          weekly_activity: [],
+          achievements: [],
+          current_streak: 0,
+          longest_streak: 0,
           quiz_attempts: 0,
           quiz_completions: 0,
           total_quiz_points: 0
         });
-        setUserProgress(newProgress);
+        setUserProgress(newProgressRecord);
+        console.log('[PROGRESS] ✅ New progress record created');
       }
     } catch (err) {
       console.error("Error fetching progress data:", err);
