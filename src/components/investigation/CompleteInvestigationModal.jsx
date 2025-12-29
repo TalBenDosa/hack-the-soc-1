@@ -15,7 +15,9 @@ export default function CompleteInvestigationModal({
     investigation, 
     isLoading,
     feedback,
-    scoreBreakdown 
+    scoreBreakdown,
+    scenario,
+    currentUser
 }) {
     
     const generateComprehensivePDF = () => {
@@ -65,7 +67,50 @@ export default function CompleteInvestigationModal({
             doc.text(`Duration: ${durationMinutes} minutes`, margin, yPos);
             yPos += 6;
             doc.text(`Status: ${investigation.status || 'Completed'}`, margin, yPos);
-            yPos += 12;
+            yPos += 6;
+            if (currentUser?.full_name) {
+                doc.text(`Analyst: ${currentUser.full_name}`, margin, yPos);
+                yPos += 6;
+            }
+            yPos += 6;
+        }
+
+        // Scenario Context
+        if (scenario) {
+            checkNewPage(25);
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(99, 102, 241);
+            doc.text('📋 Scenario Context', margin, yPos);
+            yPos += 8;
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(0, 0, 0);
+            doc.text(scenario.title || 'Untitled Scenario', margin, yPos);
+            yPos += 6;
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            
+            if (scenario.description) {
+                const descLines = doc.splitTextToSize(scenario.description, pageWidth - 2 * margin);
+                descLines.forEach(line => {
+                    checkNewPage();
+                    doc.text(line, margin, yPos);
+                    yPos += 4;
+                });
+            }
+            yPos += 8;
+            
+            if (scenario.category) {
+                doc.setFont(undefined, 'bold');
+                doc.text(`Category: ${scenario.category}`, margin, yPos);
+                yPos += 5;
+            }
+            if (scenario.difficulty) {
+                doc.text(`Difficulty: ${scenario.difficulty}`, margin, yPos);
+                yPos += 5;
+            }
+            yPos += 8;
         }
 
         // Overall Score - Large and Prominent
@@ -517,7 +562,7 @@ export default function CompleteInvestigationModal({
                             Download Comprehensive Report
                         </Button>
                         <Button 
-                            className="bg-teal-600 hover:bg-teal-700 flex-1"
+                            className="bg-slate-600 hover:bg-slate-700 flex-1"
                             onClick={handleConfirm}
                         >
                             Continue

@@ -703,6 +703,8 @@ Please respond with this exact JSON structure:
         isLoading={isGeneratingFeedback}
         feedback={aiFeedback}
         scoreBreakdown={scoreBreakdown}
+        scenario={currentScenario}
+        currentUser={currentUser}
       />
 
     </div>
