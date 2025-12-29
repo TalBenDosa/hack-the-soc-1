@@ -57,17 +57,21 @@ export default function ProgressPage() {
         throw new Error("User progress system not available");
       }
 
-      // Fetch progress with or without tenant
-      const progressRecords = tenantId 
-        ? await UserProgress.filter({ user_id: user.id, tenant_id: tenantId })
-        : await UserProgress.filter({ user_id: user.id });
+      // Fetch progress by user_id (works for all users, with or without tenant)
+      const progressRecords = await UserProgress.filter({ user_id: user.id });
 
       if (progressRecords && progressRecords.length > 0) {
-        console.log('[PROGRESS] Found user progress record:', progressRecords[0]);
+        console.log('[PROGRESS] ✅ Found user progress record by user_id');
         setUserProgress(progressRecords[0]);
       } else {
-        console.log('[PROGRESS] No progress record found. Creating default state.');
-        setUserProgress({
+        console.log('[PROGRESS] ✅ No progress found - creating new record for user');
+        
+        // Create new progress record for this user
+        const newProgress = await UserProgress.create({
+          user_id: user.id,
+          user_full_name: user.full_name,
+          tenant_id: tenantId || null,
+          is_super_admin_activity: false,
           points: 0,
           level: 1,
           points_to_next_level: 100,
@@ -78,9 +82,20 @@ export default function ProgressPage() {
           longest_streak: 0,
           total_time_spent: 0,
           achievements: [],
-          skill_levels: {},
+          skill_levels: {
+            malware_detection: 10,
+            network_analysis: 10,
+            incident_response: 10,
+            threat_hunting: 10
+          },
           weekly_activity: [],
+          quiz_attempts: 0,
+          quiz_completions: 0,
+          total_quiz_points: 0
         });
+        
+        console.log('[PROGRESS] ✅ Created new progress record:', newProgress.id);
+        setUserProgress(newProgress);
       }
     } catch (err) {
       console.error("Error fetching progress data:", err);
