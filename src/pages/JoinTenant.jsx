@@ -15,41 +15,48 @@ export default function JoinTenant() {
 
     useEffect(() => {
         const initializeJoin = async () => {
+            // Handle both hash routing and regular routing
+            const hashSearch = window.location.hash.includes('?') 
+                ? window.location.hash.split('?')[1] 
+                : window.location.search.substring(1);
+            const urlParams = new URLSearchParams(hashSearch);
+            const code = urlParams.get('code');
+            const isAdmin = urlParams.get('admin') === 'true';
+            const tenantName = urlParams.get('tenant_name');
+            
+            console.log('[JOIN TENANT] URL Params:', { code, isAdmin, tenantName });
+            
+            if (!code) {
+                setResult({ success: false, message: 'Invalid invitation link - missing code parameter.' });
+                setLoading(false);
+                return;
+            }
+
+            // Save invite code to session storage for after login
+            sessionStorage.setItem('pending_tenant_invite', JSON.stringify({
+                code,
+                isAdmin,
+                tenantName
+            }));
+
             try {
-                // Try to get user first - if not logged in, redirect to login with return URL
+                // Check if user is logged in
                 const currentUser = await User.me();
                 if (!currentUser) {
-                    // Save current URL to return after login
-                    const returnUrl = window.location.hash || window.location.pathname + window.location.search;
-                    console.log('[JOIN TENANT] User not logged in, redirecting to login with return URL:', returnUrl);
-                    window.location.href = `/?return=${encodeURIComponent(returnUrl)}`;
+                    // User not logged in - redirect to home/login page
+                    // The home page should detect the pending invite and handle it after login
+                    console.log('[JOIN TENANT] User not logged in, redirecting to login...');
+                    window.location.href = '/#/';
                     return;
                 }
                 
                 // User is logged in, process the invitation
-                // Handle both hash routing and regular routing
-                const hashSearch = window.location.hash.includes('?') 
-                    ? window.location.hash.split('?')[1] 
-                    : window.location.search.substring(1);
-                const urlParams = new URLSearchParams(hashSearch);
-                const code = urlParams.get('code');
-                const isAdmin = urlParams.get('admin') === 'true';
-                const tenantName = urlParams.get('tenant_name');
-                
-                console.log('[JOIN TENANT] URL Params:', { code, isAdmin, tenantName });
-                
-                if (!code) {
-                    setResult({ success: false, message: 'Invalid invitation link - missing code parameter.' });
-                    setLoading(false);
-                    return;
-                }
-
+                console.log('[JOIN TENANT] User logged in, processing invite...');
                 handleJoinTenant(code, isAdmin, tenantName);
             } catch (error) {
                 console.error('[JOIN TENANT] Initialization error:', error);
-                // User not logged in, redirect to login
-                const returnUrl = window.location.hash || window.location.pathname + window.location.search;
-                window.location.href = `/?return=${encodeURIComponent(returnUrl)}`;
+                // User not logged in, redirect to home/login
+                window.location.href = '/#/';
             }
         };
         
