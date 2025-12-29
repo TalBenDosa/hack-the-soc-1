@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Tenant, TenantUser } from '@/entities/all';
@@ -15,20 +14,42 @@ export default function JoinTenant() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const isAdmin = urlParams.get('admin') === 'true';
-        const tenantName = urlParams.get('tenant_name'); // Get expected tenant name from URL
-        
-        console.log('[JOIN TENANT] URL Params:', { code, isAdmin, tenantName });
-        
-        if (!code) {
-            setResult({ success: false, message: 'Invalid invitation link - missing code parameter.' });
-            setLoading(false);
-            return;
-        }
+        const initializeJoin = async () => {
+            try {
+                // Try to get user first - if not logged in, redirect to login with return URL
+                const currentUser = await User.me();
+                if (!currentUser) {
+                    // Save current URL to return after login
+                    const returnUrl = window.location.hash || window.location.pathname + window.location.search;
+                    console.log('[JOIN TENANT] User not logged in, redirecting to login with return URL:', returnUrl);
+                    window.location.href = `/?return=${encodeURIComponent(returnUrl)}`;
+                    return;
+                }
+                
+                // User is logged in, process the invitation
+                const urlParams = new URLSearchParams(window.location.search);
+                const code = urlParams.get('code');
+                const isAdmin = urlParams.get('admin') === 'true';
+                const tenantName = urlParams.get('tenant_name');
+                
+                console.log('[JOIN TENANT] URL Params:', { code, isAdmin, tenantName });
+                
+                if (!code) {
+                    setResult({ success: false, message: 'Invalid invitation link - missing code parameter.' });
+                    setLoading(false);
+                    return;
+                }
 
-        handleJoinTenant(code, isAdmin, tenantName);
+                handleJoinTenant(code, isAdmin, tenantName);
+            } catch (error) {
+                console.error('[JOIN TENANT] Initialization error:', error);
+                // User not logged in, redirect to login
+                const returnUrl = window.location.hash || window.location.pathname + window.location.search;
+                window.location.href = `/?return=${encodeURIComponent(returnUrl)}`;
+            }
+        };
+        
+        initializeJoin();
     }, []);
 
     const handleJoinTenant = async (code, isAdmin, expectedTenantName) => {
