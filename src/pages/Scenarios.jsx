@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Loader2, BookOpen, Target, Play, RefreshCw, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { RoleGuard } from "../components/auth/RoleBasedAccess";
 
 export default function ScenariosPage() {
   const [scenarios, setScenarios] = useState([]);
@@ -74,8 +73,7 @@ export default function ScenariosPage() {
   }
 
   return (
-    <RoleGuard permission="access_scenarios">
-      <div className="p-4 md:p-8 bg-slate-900 min-h-screen text-white">
+    <div className="p-4 md:p-8 bg-slate-900 min-h-screen text-white">
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
@@ -125,6 +123,5 @@ export default function ScenariosPage() {
           </div>
         </div>
       </div>
-    </RoleGuard>
   );
 }
