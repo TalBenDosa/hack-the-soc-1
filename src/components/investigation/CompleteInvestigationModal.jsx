@@ -341,7 +341,7 @@ export default function CompleteInvestigationModal({
         if (feedback.strengths && feedback.strengths.length > 0) {
             checkNewPage(30);
             doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
+            doc.setFont('helvetica', 'bold');
             doc.setTextColor(34, 197, 94);
             doc.text('Key Strengths', margin, yPos);
             yPos += 8;
@@ -366,7 +366,7 @@ export default function CompleteInvestigationModal({
         if (feedback.areas_for_improvement && feedback.areas_for_improvement.length > 0) {
             checkNewPage(30);
             doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
+            doc.setFont('helvetica', 'bold');
             doc.setTextColor(234, 179, 8);
             doc.text('Areas for Improvement', margin, yPos);
             yPos += 8;
@@ -391,7 +391,7 @@ export default function CompleteInvestigationModal({
         if (feedback.evaluation_details?.suggested_approach) {
             checkNewPage(30);
             doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
+            doc.setFont('helvetica', 'bold');
             doc.setTextColor(99, 102, 241);
             doc.text('Professional Approach Recommendation', margin, yPos);
             yPos += 8;
