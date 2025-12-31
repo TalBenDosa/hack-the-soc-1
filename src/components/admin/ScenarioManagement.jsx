@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Scenario } from "@/entities/Scenario";
 import { User } from "@/entities/User"; // Import the User entity
@@ -222,14 +221,64 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
   const handleGenerateWithAI = async () => {
     setIsGenerating(true);
     try {
-      console.log('[SCENARIO MANAGEMENT] Starting correlation-based scenario generation...');
+      console.log('[SCENARIO MANAGEMENT] Calling AI agent for Malware Bazaar scenario generation...');
       
-      const engine = new CorrelationEngine();
+      // Import base44 SDK for agent calls
+      const { base44 } = await import('@/api/base44Client');
       
+      // Create a conversation with the agent
+      const conversation = await base44.agents.createConversation({
+        agent_name: 'scenario_generator',
+        metadata: {
+          name: 'Malware Scenario Generation',
+          description: 'Generate scenario from Malware Bazaar data'
+        }
+      });
+
+      // Send message to the agent to generate scenario with Malware Bazaar data
+      await base44.agents.addMessage(conversation, {
+        role: 'user',
+        content: 'Generate a new SOC training scenario using real malware data from Malware Bazaar. Include realistic logs, IOCs, and attack narrative.'
+      });
+
+      // Wait for agent response
+      let agentResponse = null;
+      let attempts = 0;
+      const maxAttempts = 30; // Wait up to 30 seconds
+      
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const updatedConversation = await base44.agents.getConversation(conversation.id);
+        const lastMessage = updatedConversation.messages[updatedConversation.messages.length - 1];
+        
+        if (lastMessage.role === 'assistant' && lastMessage.content) {
+          agentResponse = lastMessage.content;
+          break;
+        }
+        attempts++;
+      }
+
+      if (!agentResponse) {
+        throw new Error('Agent did not respond in time');
+      }
+
+      // Parse the agent's response to extract scenario data
+      let investigationScenario;
+      try {
+        // Try to extract JSON from the response
+        const jsonMatch = agentResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          investigationScenario = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found in agent response');
+        }
+      } catch (parseError) {
+        console.error('Failed to parse agent response:', parseError);
+        throw new Error('Agent response was not in the expected format');
+      }
+
       const difficulties = ["Easy", "Medium", "Hard"];
       const difficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
-
-      const investigationScenario = await engine.generateInvestigationScenario(difficulty);
       
       // --- FIX: Add robust defensive checks for the generated scenario ---
       if (!investigationScenario || !investigationScenario.logs || !Array.isArray(investigationScenario.logs) || investigationScenario.logs.length === 0) {
