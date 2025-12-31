@@ -71,7 +71,7 @@ const loadTemplates = async () => {
       return templates;
     }
   } catch (error) {
-    console.warn('Could not load log templates, using fallback data:', error);
+    console.warn('Could not load log templates, using fallback data:', error.message || error);
   }
 
   // Return empty array if no templates - will use fallback generation
