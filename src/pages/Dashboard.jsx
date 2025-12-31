@@ -44,7 +44,8 @@ export default function Dashboard() {
       
     } catch (error) {
       console.error("Error loading dashboard data:", error);
-      setError("A network error occurred. Please check your connection and try again.");
+      const errorMessage = error?.message || error?.toString() || "A network error occurred. Please check your connection and try again.";
+      setError(errorMessage);
     }
     setIsLoading(false);
   };
