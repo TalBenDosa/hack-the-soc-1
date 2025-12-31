@@ -228,7 +228,7 @@ export const generateRealisticLog = async () => {
     // Fallback to hardcoded generation
     return generateFallbackLog();
   } catch (error) {
-    console.warn('Error in log generation, using fallback:', error);
+    console.warn('Error in log generation, using fallback:', error.message || error);
     return generateFallbackLog();
   }
 };
