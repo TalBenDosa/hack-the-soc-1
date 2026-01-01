@@ -308,8 +308,10 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
         hostname: l.hostname || 'HOST-01',
         ip_address: l.ip_address || '10.0.0.1',
         severity: l.severity || 'High',
-        admin_notes: `${l.verdict}: ${l.justification}`,
-        raw_log_data: { ...l.raw_log_data, hash: data.malware_hash },
+        admin_notes: `${l.verdict || 'TP'}: ${l.justification || 'No justification'}`,
+        raw_log_data: l.raw_log_data && typeof l.raw_log_data === 'object' 
+          ? { ...l.raw_log_data, hash: data.malware_hash }
+          : { hash: data.malware_hash, description: l.description },
         default_classification: l.verdict === 'FP' ? 'False Positive' : 'True Positive'
       }));
 
