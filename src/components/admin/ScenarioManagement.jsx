@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow }
 import { BookOpen, Search, Edit, Plus, Trash2, Download, Sparkles, Loader2, ChevronDown, CheckCircle, Archive } from "lucide-react"; // Updated icons
 import ScenarioEditor from './ScenarioEditor'; // Import the new editor
 import { CorrelationEngine } from '../utils/correlationEngine'; // ייבוא המנוע החדש
+import { generateAdvancedAIScenario, listAttackChains } from '../utils/advancedAIScenarioGenerator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
