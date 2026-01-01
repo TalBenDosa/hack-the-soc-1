@@ -264,11 +264,25 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
 
       console.log('[SCENARIO MANAGEMENT] Agent response received, parsing scenario...');
 
-      // Parse the agent's response to extract scenario data
-      const scenarioData = JSON.parse(agentResponse);
+      // Try to parse the agent's response as JSON
+      let scenarioData;
+      try {
+        // Try to extract JSON from the response if it contains markdown or extra text
+        const jsonMatch = agentResponse.match(/\{[\s\S]*\}/);
+        const jsonString = jsonMatch ? jsonMatch[0] : agentResponse;
+        scenarioData = JSON.parse(jsonString);
+      } catch (parseError) {
+        console.error('[SCENARIO MANAGEMENT] Failed to parse agent response:', agentResponse.substring(0, 500));
+        throw new Error('Agent response was not valid JSON. Please try again.');
+      }
 
-      if (!scenarioData.logs || scenarioData.logs.length === 0) {
-        throw new Error('Agent did not generate logs. Response: ' + agentResponse.substring(0, 200));
+      if (!scenarioData || typeof scenarioData !== 'object') {
+        throw new Error('Agent response was not a valid object');
+      }
+
+      if (!scenarioData.logs || !Array.isArray(scenarioData.logs) || scenarioData.logs.length === 0) {
+        console.error('[SCENARIO MANAGEMENT] Invalid scenario structure:', scenarioData);
+        throw new Error('Agent did not generate valid logs. Please try again.');
       }
 
       // Convert agent logs to scenario format
