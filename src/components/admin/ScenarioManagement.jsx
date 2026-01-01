@@ -222,11 +222,11 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
   const handleGenerateWithAI = async () => {
     setIsGenerating(true);
     try {
-      console.log('[SCENARIO] Verifying assistant ID: asst_7yNQuVVkdZPBNO7FWJsuyISa');
-      console.log('[SCENARIO] Creating conversation...');
+      console.log('[SCENARIO] Connecting to assistant asst_7yNQuVVkdZPBNO7FWJsuyISa with vector store vs_6954e6056a188191a008aa131f969c47');
 
       const conversation = await base44.agents.createConversation({
-        agent_name: 'scenario_generator'
+        assistant_id: 'asst_7yNQuVVkdZPBNO7FWJsuyISa',
+        vector_store_ids: ['vs_6954e6056a188191a008aa131f969c47']
       });
 
       if (!conversation?.id) {
