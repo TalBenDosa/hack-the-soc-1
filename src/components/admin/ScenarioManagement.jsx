@@ -240,7 +240,8 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
 
       console.log(`[SCENARIO MANAGEMENT] Generated scenario: ${investigationScenario.scenario_name}`);
       console.log(`[SCENARIO MANAGEMENT] Total logs: ${investigationScenario.total_logs}`);
-      console.log(`[SCENARIO MANAGEMENT] Data sources: ${investigationScenario.data_sources_used.join(', ')}`);
+      console.log(`[SCENARIO MANAGEMENT] Attack chain: ${investigationScenario.attack_chain}`);
+      console.log(`[SCENARIO MANAGEMENT] MITRE techniques: ${investigationScenario.mitre_techniques_used.join(', ')}`);
       
       const scenarioLogs = investigationScenario.logs.map((log, index) => {
         // Remove ALL verdict-related fields from the raw log data shown to the student
