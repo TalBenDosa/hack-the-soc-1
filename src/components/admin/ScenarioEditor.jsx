@@ -244,7 +244,6 @@ export default function ScenarioEditor({ isOpen, onClose, onSave, scenario, tena
                                                 <p className="text-xs text-slate-400">{event.source_type || 'N/A'} - {event.timestamp ? new Date(event.timestamp).toLocaleString() : 'N/A'}</p>
                                             </div>
                                             <div className="flex items-center gap-2 ml-4">
-                                                <Badge variant="outline" className="border-slate-500 text-slate-300">{event.default_classification || 'N/A'}</Badge>
                                                 <Button variant="ghost" size="icon" className="w-8 h-8 hover:bg-slate-600" onClick={() => handleEditEvent(event, index)}>
                                                     <Edit className="w-4 h-4 text-blue-400" />
                                                 </Button>
