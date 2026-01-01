@@ -222,14 +222,14 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
   const handleGenerateWithAI = async () => {
     setIsGenerating(true);
     try {
-      console.log('[SCENARIO MANAGEMENT] Starting correlation-based scenario generation...');
+      console.log('[SCENARIO MANAGEMENT] Starting MITRE ATT&CK AI scenario generation...');
       
-      const engine = new CorrelationEngine();
-      
-      const difficulties = ["Easy", "Medium", "Hard"];
-      const difficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
-
-      const investigationScenario = await engine.generateInvestigationScenario(difficulty);
+      // Use advanced AI generator with MITRE ATT&CK
+      const investigationScenario = await generateAdvancedAIScenario({
+        attackChain: null, // Random selection
+        difficulty: null, // Auto-determine
+        numLogs: null // Auto-determine (8-15)
+      });
       
       // --- FIX: Add robust defensive checks for the generated scenario ---
       if (!investigationScenario || !investigationScenario.logs || !Array.isArray(investigationScenario.logs) || investigationScenario.logs.length === 0) {
