@@ -244,51 +244,33 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
       console.log(`[SCENARIO MANAGEMENT] MITRE techniques: ${investigationScenario.mitre_techniques_used.join(', ')}`);
       
       const scenarioLogs = investigationScenario.logs.map((log, index) => {
-        // Remove ALL verdict-related fields from the raw log data shown to the student
-        const { verdict, justification, default_classification, verdict_confidence, notes, admin_notes, ...cleanRawLog } = log;
+        // Remove verdict-related fields from raw log data
+        const { verdict, justification, mitre_technique, ...cleanRawLog } = log;
         
-        // ✅ NEW: Function to get the best possible description for the log
-        const getBestLogDescription = (logObject) => {
-            if (logObject.story_context && typeof logObject.story_context === 'string' && logObject.story_context.trim() && logObject.story_context !== 'Generated Event') {
-                return logObject.story_context;
-            }
-            if (logObject.event_type && typeof logObject.event_type === 'string' && logObject.event_type.trim() && logObject.event_type !== 'Generated Event') {
-                return logObject.event_type.replace(/_/g, ' '); // Replace underscores for readability
-            }
-            // Check raw_log_data.message
-            if (logObject.raw_log_data?.message && typeof logObject.raw_log_data.message === 'string') {
-                return logObject.raw_log_data.message;
-            }
-            if (logObject.title && typeof logObject.title === 'string' && logObject.title !== 'Generated Event') {
-                return logObject.title;
-            }
-            if (logObject.description && typeof logObject.description === 'string' && logObject.description !== 'Generated Event') {
-                return logObject.description;
-            }
-            return 'Security Event Logged'; // Final fallback
-        };
+        // Get best description
+        const description = log.story_context || log.event_type || 'Security Event Detected';
+        const sourceType = log.log_source || 'EDR';
 
-        const description = getBestLogDescription(log);
-        let sourceType = log.log_source;
-        if (description.toLowerCase().includes('edr') || description.toLowerCase().includes('endpoint')) {
-            sourceType = 'EDR';
-        }
+        // Map verdict to classification
+        const classification = verdict === 'TP' ? 'True Positive' : 
+                              verdict === 'FP' ? 'False Positive' : 
+                              'Escalate to TIER 2';
 
         return {
           id: `log-${Date.now()}-${index}`,
-          rule_description: description, // ✅ FIX: Use the best available description here
+          rule_description: description,
           source_type: sourceType,
-          timestamp: log.timestamp || log.event_time,
-          username: log.user_name || 'N/A',
-          hostname: log.device_name || 'Unknown',
-          ip_address: log.source_ip || 'N/A',
-          severity: log.log_level || 'Medium',
-          admin_notes: `Verdict: ${log.verdict}. Description: ${log.justification || ''}`,
-          raw_log_data: cleanRawLog, // Only pure technical log data, no hints about the answer
-          default_classification: log.verdict === 'TP' ? 'True Positive' : 
-                                log.verdict === 'FP' ? 'False Positive' : 
-                                'Escalate to TIER 2',
-          verdict_confidence: log.verdict,
+          timestamp: log.timestamp,
+          username: log.user_name || log.username || 'N/A',
+          hostname: log.device_name || log.hostname || 'Unknown',
+          ip_address: log.source_ip || log.source_ip_address || 'N/A',
+          severity: log.severity || 'Medium',
+          admin_notes: `MITRE: ${mitre_technique || 'N/A'}\nVerdict: ${verdict}\nJustification: ${justification || ''}`,
+          raw_log_data: {
+            ...cleanRawLog,
+            mitre_technique: mitre_technique // Keep for admin reference
+          },
+          default_classification: classification,
         };
       });
 
