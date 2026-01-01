@@ -368,7 +368,7 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
                   ) : (
                     <Sparkles className="w-4 h-4 mr-2" />
                   )}
-                  {isGenerating ? 'Generating Narrative Scenario...' : 'Generate with AI'}
+                  {isGenerating ? 'Generating MITRE ATT&CK Scenario...' : 'Generate with AI'}
                 </Button>
                 <Button onClick={handleAddNew} className="bg-teal-600 hover:bg-teal-700">
                   <Plus className="w-4 h-4 mr-2" />
