@@ -401,14 +401,21 @@ Make this scenario challenging, realistic, and educational for SOC analysts!`;
 
 /**
  * Select random attack chain with weighted probability
+ * All scenarios are now APT-level threats
  */
 function selectRandomAttackChain() {
   const weights = {
     'apt29-cozy-bear': 2,
-    'ransomware-ryuk': 3,
-    'insider-threat': 2,
-    'web-app-exploit': 2,
-    'privilege-escalation': 1
+    'apt28-fancy-bear': 2,
+    'apt32-oceanlotus': 2,
+    'apt41-double-dragon': 2,
+    'lazarus-group': 2,
+    'fin7-carbanak': 2,
+    'blackcat-alphv': 3,
+    'lockbit-3': 3,
+    'solarwinds-supply-chain': 1,
+    'cloud-infrastructure-apt': 2,
+    'apt10-menupass': 2
   };
 
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
@@ -419,7 +426,7 @@ function selectRandomAttackChain() {
     if (random <= 0) return key;
   }
 
-  return 'ransomware-ryuk'; // fallback
+  return 'blackcat-alphv'; // fallback
 }
 
 /**
