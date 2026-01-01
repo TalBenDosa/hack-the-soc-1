@@ -301,7 +301,10 @@ export async function generateAdvancedAIScenario(options = {}) {
               mitre_technique: { type: 'string' },
               verdict: { type: 'string' }, // TP, FP, or BenignNoise
               justification: { type: 'string' },
-              raw_log_data: { type: 'object' }
+              raw_log_data: { 
+                type: 'object',
+                description: 'Comprehensive log data with 10-20 realistic fields matching actual security tool output'
+              }
             },
             required: ['timestamp', 'log_source', 'event_type', 'verdict', 'justification']
           }
