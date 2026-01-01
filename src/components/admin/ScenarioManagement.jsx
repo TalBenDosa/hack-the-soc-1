@@ -297,8 +297,12 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
       console.log('[SCENARIO] ✅ Done:', logs.length, 'logs');
 
     } catch (error) {
-      console.error('[SCENARIO] ❌', error);
-      alert(`Failed: ${error.message}`);
+      console.error('[SCENARIO] ❌ Full error:', error);
+      const errorMsg = typeof error === 'string' ? error : 
+                      error?.message || 
+                      error?.error || 
+                      JSON.stringify(error);
+      alert(`Failed to generate scenario: ${errorMsg}`);
     } finally {
       setIsGenerating(false);
     }
