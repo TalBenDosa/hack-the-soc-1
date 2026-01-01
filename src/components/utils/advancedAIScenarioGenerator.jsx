@@ -384,9 +384,15 @@ Generate a complete investigation scenario with **${totalLogs} realistic securit
    - Include reconnaissance, initial access, lateral movement, impact
    - Mix in benign activities that could confuse junior analysts
 
-6. **Technical Accuracy**:
+6. **Technical Accuracy & Rich Log Data**:
    - Each TRUE POSITIVE log should map to a MITRE ATT&CK technique
-   - Include technical details in raw_log_data (event IDs, registry keys, etc.)
+   - **CRITICAL**: raw_log_data must contain COMPREHENSIVE, REALISTIC log fields as they appear in real security logs:
+     * Windows Security logs: event_id, account_name, account_domain, logon_type, workstation_name, logon_process, authentication_package, security_id, process_id, parent_process_id, token_elevation_type
+     * EDR logs: process_guid, parent_process_guid, hash_sha256, hash_md5, signer, signature_status, image_loaded, registry_path, registry_value_type, registry_value_data
+     * Firewall logs: protocol, src_port, dst_port, bytes_sent, bytes_received, packets_sent, packets_received, action, rule_name, application
+     * Active Directory logs: distinguished_name, group_name, ou_path, old_value, new_value, object_class, attribute_modified
+     * Network IDS: signature_id, classification, priority, protocol, flags, ttl, payload_printable
+     * Add 10-20 relevant fields per log to make it production-grade realistic
    - Make story_context descriptive but not revealing the verdict
 
 7. **Learning Value**:
