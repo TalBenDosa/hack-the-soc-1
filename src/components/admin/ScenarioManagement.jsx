@@ -222,118 +222,118 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
   const handleGenerateWithAI = async () => {
     setIsGenerating(true);
     try {
-      console.log('[SCENARIO MANAGEMENT] Connecting to OpenAI assistant with Malware Bazaar data...');
+      console.log('[SCENARIO MANAGEMENT] Fetching real malware from Malware Bazaar...');
 
-      // Create conversation with specific assistant and vector store
-      const conversation = await base44.agents.createConversation({
-        assistant_id: 'asst_7yNQuVVkdZPBNO7FWJsuyISa',
-        vector_store_ids: ['vs_6954e6056a188191a008aa131f969c47'],
-        metadata: {
-          name: 'Malware Bazaar Scenario Generation',
-          description: 'Generate SOC scenario with real malware data'
-        }
-      });
+      // Direct LLM call with internet access to get real malware
+      const scenarioData = await base44.integrations.Core.InvokeLLM({
+        prompt: `Access Malware Bazaar API (https://bazaar.abuse.ch/api/) and get ONE recent malware sample.
 
-      console.log('[SCENARIO MANAGEMENT] Connected to assistant, requesting scenario...');
+  Then create a realistic SOC training scenario with 10 security logs showing the attack progression.
+  Include the real malware hash, family name, and IOCs in relevant logs.
+  Mix True Positive (TP) and False Positive (FP) events.
 
-      // Request scenario generation
-      await base44.agents.addMessage(conversation, {
-        role: 'user',
-        content: 'Generate a complete SOC training scenario with 10 correlated security logs based on real malware from the knowledge base. Return a valid JSON object with scenario_name, description, difficulty, and logs array.'
-      });
-
-      // Wait for response with longer timeout
-      let attempts = 0;
-      let agentResponse = null;
-      const maxAttempts = 90;
-
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const updatedConv = await base44.agents.getConversation(conversation.id);
-
-        const lastMsg = updatedConv.messages?.[updatedConv.messages.length - 1];
-        if (lastMsg?.role === 'assistant' && lastMsg?.content) {
-          agentResponse = lastMsg.content;
-          // Check if response is complete (not streaming)
-          if (lastMsg.status === 'completed' || !lastMsg.status) {
-            break;
+  Return ONLY this exact JSON structure:
+  {
+  "scenario_name": "Attack name",
+  "description": "Detailed scenario description",
+  "difficulty": "Easy|Medium|Hard",
+  "malware_family": "malware family name",
+  "malware_hash": "SHA256 hash",
+  "logs": [
+  {
+  "timestamp": "ISO datetime",
+  "source_type": "EDR|Firewall|Active Directory|Office 365|etc",
+  "description": "What happened",
+  "username": "user",
+  "hostname": "computer name",
+  "ip_address": "IP",
+  "severity": "Low|Medium|High|Critical",
+  "verdict": "TP|FP",
+  "justification": "why TP or FP",
+  "raw_log_data": {}
+  }
+  ]
+  }`,
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            scenario_name: { type: "string" },
+            description: { type: "string" },
+            difficulty: { type: "string" },
+            malware_family: { type: "string" },
+            malware_hash: { type: "string" },
+            logs: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  timestamp: { type: "string" },
+                  source_type: { type: "string" },
+                  description: { type: "string" },
+                  username: { type: "string" },
+                  hostname: { type: "string" },
+                  ip_address: { type: "string" },
+                  severity: { type: "string" },
+                  verdict: { type: "string" },
+                  justification: { type: "string" },
+                  raw_log_data: { type: "object" }
+                }
+              }
+            }
           }
         }
-        attempts++;
+      });
+
+      if (!scenarioData?.logs?.length) {
+        throw new Error('No logs generated');
       }
 
-      if (!agentResponse) {
-        throw new Error('No response from assistant after 90 seconds');
-      }
+      console.log('[SCENARIO MANAGEMENT] Converting to scenario format...');
 
-      console.log('[SCENARIO MANAGEMENT] Response received, parsing JSON...');
-
-      // Extract and parse JSON from response
-      let scenarioData;
-      try {
-        // Try to extract JSON from markdown code blocks or plain text
-        const jsonMatch = agentResponse.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/) || 
-                        agentResponse.match(/(\{[\s\S]*\})/);
-
-        if (!jsonMatch) {
-          throw new Error('No JSON found in response');
-        }
-
-        scenarioData = JSON.parse(jsonMatch[1]);
-      } catch (e) {
-        console.error('[SCENARIO MANAGEMENT] Parse failed:', e);
-        console.error('Response sample:', agentResponse.substring(0, 800));
-        throw new Error('Could not parse assistant response as JSON');
-      }
-
-      // Strict validation
-      if (!scenarioData?.logs || !Array.isArray(scenarioData.logs) || scenarioData.logs.length === 0) {
-        console.error('[SCENARIO MANAGEMENT] Invalid structure:', scenarioData);
-        throw new Error('Response missing valid logs array');
-      }
-
-      // Transform logs to scenario format
-      const scenarioLogs = scenarioData.logs.map((log, idx) => ({
-        id: `malware-${Date.now()}-${idx}`,
-        rule_description: log.description || log.rule_description || 'Security Alert',
-        source_type: log.source_type || log.log_source || 'EDR',
+      const scenarioLogs = scenarioData.logs.map((log, i) => ({
+        id: `mb-${Date.now()}-${i}`,
+        rule_description: log.description || 'Security Alert',
+        source_type: log.source_type || 'EDR',
         timestamp: log.timestamp || new Date().toISOString(),
-        username: log.username || log.user_name || 'Unknown',
-        hostname: log.hostname || log.device_name || 'WORKSTATION-01',
-        ip_address: log.ip_address || log.source_ip || '192.168.1.100',
+        username: log.username || 'user',
+        hostname: log.hostname || 'PC-01',
+        ip_address: log.ip_address || '10.0.0.1',
         severity: log.severity || 'High',
-        admin_notes: `${log.verdict || 'TP'}: ${log.justification || 'Malware-related activity'}`,
-        raw_log_data: log.raw_log_data || log,
+        admin_notes: `${log.verdict}: ${log.justification}`,
+        raw_log_data: { ...log.raw_log_data, malware_hash: scenarioData.malware_hash },
         default_classification: log.verdict === 'FP' ? 'False Positive' : 'True Positive'
       }));
 
-      const scenario = {
-        title: scenarioData.scenario_name || scenarioData.title || 'Malware Investigation',
-        description: scenarioData.description || 'Real malware-based training scenario',
+      setEditingScenario({
+        title: `${scenarioData.malware_family} - Real Malware Attack`,
+        description: `${scenarioData.description}\n\n🦠 Based on real malware:\nFamily: ${scenarioData.malware_family}\nSHA256: ${scenarioData.malware_hash}`,
         difficulty: scenarioData.difficulty || 'Medium',
-        category: scenarioData.category || 'Malware',
+        category: 'Malware',
         estimated_duration: 60,
         initial_events: scenarioLogs,
         is_active: false,
-        learning_objectives: Array.isArray(scenarioData.learning_objectives) 
-          ? scenarioData.learning_objectives 
-          : ['Analyze real malware activity', 'Identify IOCs', 'Correlate logs'],
-        tags: ['Malware Bazaar', 'Real Data', 'AI Generated', scenarioData.difficulty || 'Medium'],
+        learning_objectives: [
+          `Analyze ${scenarioData.malware_family} malware`,
+          'Track attack progression',
+          'Identify real IOCs',
+          'Correlate multiple log sources'
+        ],
+        tags: ['Real Malware', 'Malware Bazaar', scenarioData.malware_family, scenarioData.difficulty],
         scenario_metadata: {
-          source: 'OpenAI Assistant + Malware Bazaar',
-          assistant_id: 'asst_7yNQuVVkdZPBNO7FWJsuyISa',
-          conversation_id: conversation.id,
+          source: 'Malware Bazaar',
+          malware_hash: scenarioData.malware_hash,
+          malware_family: scenarioData.malware_family,
           generated_at: new Date().toISOString()
         }
-      };
+      });
 
-      console.log(`[SCENARIO MANAGEMENT] ✅ Generated: ${scenario.title} (${scenarioLogs.length} logs)`);
-      setEditingScenario(scenario);
       setIsEditorOpen(true);
+      console.log(`[SCENARIO MANAGEMENT] ✅ Generated ${scenarioLogs.length} logs`);
 
     } catch (error) {
-      console.error('[SCENARIO MANAGEMENT] ❌ Failed:', error);
-      alert(`Failed to generate scenario: ${error.message}`);
+      console.error('[SCENARIO MANAGEMENT] ❌', error);
+      alert(`Generation failed: ${error.message}`);
     } finally {
       setIsGenerating(false);
     }
