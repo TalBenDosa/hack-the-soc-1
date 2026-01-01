@@ -222,20 +222,26 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
   const handleGenerateWithAI = async () => {
     setIsGenerating(true);
     try {
-      console.log('[SCENARIO] Creating conversation with Malware Bazaar assistant...');
+      console.log('[SCENARIO] Verifying assistant ID: asst_7yNQuVVkdZPBNO7FWJsuyISa');
+      console.log('[SCENARIO] Creating conversation...');
 
       const conversation = await base44.agents.createConversation({
-        assistant_id: 'asst_7yNQuVVkdZPBNO7FWJsuyISa',
-        vector_store_ids: ['vs_6954e6056a188191a008aa131f969c47']
+        agent_name: 'scenario_generator'
       });
 
-      console.log('[SCENARIO] Requesting scenario generation...');
+      if (!conversation?.id) {
+        throw new Error('Failed to create conversation - no ID returned');
+      }
+
+      console.log('[SCENARIO] Conversation created:', conversation.id);
+      console.log('[SCENARIO] Sending message to assistant...');
 
       await base44.agents.addMessage(conversation, {
         role: 'user',
         content: 'Use the real malware data from the knowledge base to create one complete SOC training scenario. Include: scenario_name, description, difficulty, malware_family, malware_hash, and an array of 10 logs. Each log must have: timestamp, source_type, description, username, hostname, ip_address, severity, verdict (TP/FP), justification, and raw_log_data object. Return ONLY valid JSON.'
       });
 
+      console.log('[SCENARIO] Waiting for response...');
       let response = null;
       let attempts = 0;
 
@@ -246,25 +252,39 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
 
         if (last?.role === 'assistant' && last?.content) {
           response = last.content;
-          break;
+          if (last.status === 'completed' || !last.status) {
+            break;
+          }
         }
         attempts++;
       }
 
-      if (!response) throw new Error('Timeout - no response');
+      if (!response) {
+        throw new Error('No response received after 120 seconds');
+      }
 
-      console.log('[SCENARIO] Parsing response...');
+      console.log('[SCENARIO] Response received, parsing...');
 
       let data;
       try {
         const match = response.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*\})/);
-        data = JSON.parse(match ? (match[1] || match[2]) : response);
+        if (!match) {
+          console.error('[SCENARIO] No JSON found in response:', response.substring(0, 500));
+          throw new Error('No JSON structure found in response');
+        }
+        data = JSON.parse(match[1] || match[2]);
       } catch (e) {
-        console.error('Parse error:', e, response.substring(0, 500));
-        throw new Error('Invalid JSON response');
+        console.error('[SCENARIO] Parse error:', e.message);
+        console.error('[SCENARIO] Response preview:', response.substring(0, 500));
+        throw new Error(`JSON parsing failed: ${e.message}`);
       }
 
-      if (!data?.logs?.length) throw new Error('No logs in response');
+      if (!data?.logs?.length) {
+        console.error('[SCENARIO] Invalid data structure:', data);
+        throw new Error('Response missing logs array');
+      }
+
+      console.log('[SCENARIO] Creating scenario with', data.logs.length, 'logs');
 
       const logs = data.logs.map((l, i) => ({
         id: `mb-${Date.now()}-${i}`,
@@ -294,15 +314,32 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
       });
 
       setIsEditorOpen(true);
-      console.log('[SCENARIO] ✅ Done:', logs.length, 'logs');
+      console.log('[SCENARIO] ✅ Success! Generated', logs.length, 'logs');
 
     } catch (error) {
-      console.error('[SCENARIO] ❌ Full error:', error);
-      const errorMsg = typeof error === 'string' ? error : 
-                      error?.message || 
-                      error?.error || 
-                      JSON.stringify(error);
-      alert(`Failed to generate scenario: ${errorMsg}`);
+      console.error('[SCENARIO] ❌ Error details:', {
+        message: error?.message,
+        name: error?.name,
+        stack: error?.stack,
+        fullError: error
+      });
+
+      let errorMsg = 'Unknown error occurred';
+      if (typeof error === 'string') {
+        errorMsg = error;
+      } else if (error?.message) {
+        errorMsg = error.message;
+      } else if (error?.error) {
+        errorMsg = error.error;
+      } else {
+        try {
+          errorMsg = JSON.stringify(error, null, 2);
+        } catch {
+          errorMsg = String(error);
+        }
+      }
+
+      alert(`❌ Generation failed:\n\n${errorMsg}\n\nCheck console for details.`);
     } finally {
       setIsGenerating(false);
     }
