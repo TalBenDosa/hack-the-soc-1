@@ -274,35 +274,34 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
         };
       });
 
-      // ✅ בחירת קטגוריה רנדומלית, אך הגיונית לתרחיש
-      const categories = ["Network Intrusion", "Malware", "Data Exfiltration", "Privilege Escalation", "Insider Threat", "Phishing / Social Engineering"];
-
       const generatedScenario = {
         title: investigationScenario.scenario_name,
-        description: investigationScenario.scenario_description,
-        difficulty: difficulty,
-        category: categories[Math.floor(Math.random() * categories.length)],
+        description: investigationScenario.scenario_description || investigationScenario.company_context || 'Advanced SOC investigation scenario',
+        difficulty: investigationScenario.difficulty,
+        category: investigationScenario.category,
         estimated_duration: 60,
         initial_events: scenarioLogs,
-        is_active: false, // ✅ תמיד מתחיל כטיוטה
-        learning_objectives: [
-          "Perform correlation analysis across multiple data sources",
-          "Distinguish between legitimate activity and security threats",
-          "Build a comprehensive incident timeline",
-          "Identify false positives in a complex event stream"
+        is_active: false,
+        learning_objectives: investigationScenario.learning_objectives || [
+          "Identify MITRE ATT&CK techniques in log data",
+          "Distinguish between malicious and benign activity",
+          "Correlate logs across multiple security tools",
+          "Build attack timeline and narrative"
         ],
-        tags: [
-          "Correlation", 
-          "Multi-Source", 
-          difficulty,
-          ...investigationScenario.data_sources_used,
-          investigationScenario.final_verdict.verdict
+        tags: investigationScenario.tags || [
+          "MITRE ATT&CK",
+          investigationScenario.difficulty,
+          investigationScenario.attack_chain,
+          ...investigationScenario.mitre_techniques_used
         ],
+        expected_verdict: investigationScenario.expected_verdict || 'True Positive',
         scenario_metadata: {
-          correlation_id: investigationScenario.correlation_id,
-          final_verdict: investigationScenario.final_verdict,
-          investigation_summary: investigationScenario.investigation_summary,
-          data_sources_used: investigationScenario.data_sources_used
+          attack_chain: investigationScenario.attack_chain,
+          attack_phases: investigationScenario.attack_phases,
+          mitre_techniques: investigationScenario.mitre_techniques_used,
+          malicious_logs: investigationScenario.malicious_logs,
+          benign_logs: investigationScenario.benign_logs,
+          investigation_summary: investigationScenario.investigation_summary
         }
       };
 
