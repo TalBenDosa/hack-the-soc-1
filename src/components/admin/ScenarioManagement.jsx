@@ -279,9 +279,22 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
         throw new Error(`JSON parsing failed: ${e.message}`);
       }
 
-      if (!data?.logs?.length) {
-        console.error('[SCENARIO] Invalid data structure:', data);
-        throw new Error('Response missing logs array');
+      console.log('[SCENARIO] Parsed data:', JSON.stringify(data, null, 2).substring(0, 500));
+
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid response - not an object');
+      }
+
+      if (!data.logs) {
+        throw new Error('Response missing "logs" property');
+      }
+
+      if (!Array.isArray(data.logs)) {
+        throw new Error('Response "logs" is not an array');
+      }
+
+      if (data.logs.length === 0) {
+        throw new Error('Response has empty logs array');
       }
 
       console.log('[SCENARIO] Creating scenario with', data.logs.length, 'logs');
