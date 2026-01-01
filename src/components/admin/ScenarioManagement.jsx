@@ -310,8 +310,8 @@ export default function ScenarioManagement({ tenant }) { // Accept tenant as a p
       setIsEditorOpen(true);
 
     } catch (error) {
-      console.error("[SCENARIO MANAGEMENT] Correlation-based AI Generation failed:", error);
-      alert(`Failed to generate correlated scenario: ${error.message}. Check console for detailed logs.`);
+      console.error("[SCENARIO MANAGEMENT] AI Generation failed:", error);
+      alert(`Failed to generate AI scenario: ${error.message || 'Unknown error'}. Check console for details.`);
     } finally {
       setIsGenerating(false);
     }
