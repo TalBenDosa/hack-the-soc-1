@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea';
-import { Button } from "@/components/ui/button';
-import { Input } from "@/components/ui/input';
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, PlusCircle, Trash2 } from 'lucide-react';
 import IOCTracker from './IOCTracker';

@@ -124,7 +124,7 @@ export default function ScenarioEditor({ isOpen, onClose, onSave, scenario, tena
     const handleGenerateWithAI = async () => {
         setIsGenerating(true);
         try {
-            const generatedEvents = await generateMixedScenarioLogs();
+            const generatedEvents = [];
             setFormData(prev => ({
                 ...prev,
                 initial_events: generatedEvents // Changed to replace existing events
