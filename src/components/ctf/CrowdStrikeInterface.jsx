@@ -71,15 +71,15 @@ export default function CrowdStrikeInterface() {
           <div className="px-3 py-1.5 text-slate-500 font-semibold text-xs uppercase tracking-wider">Endpoint Security</div>
           <div className="bg-red-600/20 border-l-2 border-red-500 px-4 py-2 text-red-300 font-medium cursor-default">Detections</div>
           {["Incidents", "Hosts", "Prevention Policy", "Response Actions"].map(item => (
-            <div key={item} className="px-4 py-2 text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 cursor-pointer">{item}</div>
+            <button key={item} onClick={() => alert(`${item}: This section is available in the full CrowdStrike Falcon console.`)} className="w-full text-left px-4 py-2 text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 cursor-pointer">{item}</button>
           ))}
           <div className="px-3 py-1.5 text-slate-500 font-semibold text-xs uppercase tracking-wider mt-2">Threat Intelligence</div>
           {["Indicators", "Actors", "Sandbox"].map(item => (
-            <div key={item} className="px-4 py-2 text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 cursor-pointer">{item}</div>
+            <button key={item} onClick={() => alert(`${item}: This section is available in the full CrowdStrike Falcon console.`)} className="w-full text-left px-4 py-2 text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 cursor-pointer">{item}</button>
           ))}
           <div className="px-3 py-1.5 text-slate-500 font-semibold text-xs uppercase tracking-wider mt-2">Investigate</div>
           {["Event Search", "File Analysis", "Process Timeline"].map(item => (
-            <div key={item} className="px-4 py-2 text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 cursor-pointer">{item}</div>
+            <button key={item} onClick={() => alert(`${item}: This section is available in the full CrowdStrike Falcon console.`)} className="w-full text-left px-4 py-2 text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 cursor-pointer">{item}</button>
           ))}
         </nav>
       </div>
@@ -93,10 +93,10 @@ export default function CrowdStrikeInterface() {
             <div className="text-xs text-slate-500">Endpoint Activity · Production Environment</div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700/50">
+            <button onClick={() => window.location.reload()} className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700/50 cursor-pointer">
               <RefreshCw className="w-3.5 h-3.5" /> Refresh
             </button>
-            <button className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700/50">
+            <button onClick={() => alert("Export: Downloads detections as CSV in the full Falcon console.")} className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700/50 cursor-pointer">
               Export <ChevronDown className="w-3 h-3" />
             </button>
           </div>
@@ -127,7 +127,7 @@ export default function CrowdStrikeInterface() {
             <option value="closed">Closed</option>
           </select>
           {["Severity", "Tactic", "Host"].map(f => (
-            <button key={f} className="flex items-center gap-1 text-xs text-slate-400 border border-slate-700/40 rounded px-2.5 py-1.5 bg-slate-800/40 hover:bg-slate-700/50 transition-colors">
+            <button key={f} onClick={() => alert(`Filter by ${f}: Advanced filters available in the full Falcon console.`)} className="flex items-center gap-1 text-xs text-slate-400 border border-slate-700/40 rounded px-2.5 py-1.5 bg-slate-800/40 hover:bg-slate-700/50 transition-colors cursor-pointer">
               {f} <ChevronDown className="w-3 h-3" />
             </button>
           ))}

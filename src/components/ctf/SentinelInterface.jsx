@@ -49,9 +49,9 @@ export default function SentinelInterface() {
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span> Incidents
           </div>
           {["Workbooks", "Hunting", "Notebooks", "Entity behavior", "Threat intelligence", "MITRE ATT&CK (Preview)", "SOC optimization"].map(item => (
-            <div key={item} className="px-4 py-2 text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 cursor-pointer flex items-center gap-2">
+            <button key={item} onClick={() => alert(`${item}: This section is available in the full Microsoft Sentinel environment.`)} className="w-full text-left px-4 py-2 text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 cursor-pointer flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span> {item}
-            </div>
+            </button>
           ))}
           <div className="px-3 py-2 text-slate-400 font-semibold text-xs uppercase tracking-wider mt-2">Content management</div>
           <div className="px-3 py-2 text-slate-400 font-semibold text-xs uppercase tracking-wider mt-1">Configuration</div>
@@ -75,22 +75,49 @@ export default function SentinelInterface() {
 
         {/* Toolbar */}
         <div className="bg-[#12121f] border-b border-slate-700/30 px-4 py-2 flex items-center gap-3 flex-wrap">
-          <button className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded px-2.5 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 transition-colors">
+          <button
+            onClick={() => alert("Create Incident: Feature available in live Sentinel environment.")}
+            className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded px-2.5 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 transition-colors cursor-pointer"
+          >
             <span className="text-lg leading-none font-light">+</span> Create incident
             <span className="text-slate-500 text-xs ml-1">(Preview)</span>
           </button>
-          <button className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded hover:bg-slate-700/40 transition-colors">
+          <button
+            onClick={() => window.location.reload()}
+            className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded hover:bg-slate-700/40 transition-colors cursor-pointer"
+          >
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
-          <button className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded hover:bg-slate-700/40 transition-colors">
+          <button
+            onClick={() => alert("Time filter: Showing last 14 days of incidents.")}
+            className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded hover:bg-slate-700/40 transition-colors cursor-pointer"
+          >
             <span>⏱</span> Last 14 days <ChevronDown className="w-3 h-3" />
           </button>
           <div className="w-px h-5 bg-slate-700"></div>
-          <button className="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded hover:bg-slate-700/40 transition-colors">Actions</button>
-          <button className="text-xs text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded hover:bg-red-900/20 transition-colors">Delete</button>
-          <button className="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded hover:bg-slate-700/40 transition-colors flex items-center gap-1"><BarChart2 className="w-3.5 h-3.5" /> Security efficiency workbook</button>
-          <button className="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded hover:bg-slate-700/40 transition-colors">Columns</button>
-          <button className="text-xs text-blue-400 hover:text-blue-300 px-2.5 py-1.5 rounded hover:bg-slate-700/40 transition-colors">Guides & Feedback</button>
+          <button
+            onClick={() => alert("Actions: Assign, close, or escalate selected incidents.")}
+            className="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded hover:bg-slate-700/40 transition-colors cursor-pointer"
+          >Actions</button>
+          <button
+            onClick={() => {
+              if (checkedIds.size === 0) { alert("Select one or more incidents first."); return; }
+              alert(`Delete: This would delete ${checkedIds.size} selected incident(s) in a live environment.`);
+            }}
+            className="text-xs text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded hover:bg-red-900/20 transition-colors cursor-pointer"
+          >Delete</button>
+          <button
+            onClick={() => alert("Security Efficiency Workbook: Visualises MTTD, MTTR and analyst performance metrics.")}
+            className="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded hover:bg-slate-700/40 transition-colors flex items-center gap-1 cursor-pointer"
+          ><BarChart2 className="w-3.5 h-3.5" /> Security efficiency workbook</button>
+          <button
+            onClick={() => alert("Columns: Customise which columns are visible in the incident table.")}
+            className="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded hover:bg-slate-700/40 transition-colors cursor-pointer"
+          >Columns</button>
+          <button
+            onClick={() => alert("Guides & Feedback: Opens the Microsoft Sentinel documentation and feedback portal.")}
+            className="text-xs text-blue-400 hover:text-blue-300 px-2.5 py-1.5 rounded hover:bg-slate-700/40 transition-colors cursor-pointer"
+          >Guides & Feedback</button>
         </div>
 
         {/* Info Banner */}
@@ -147,7 +174,7 @@ export default function SentinelInterface() {
             />
           </div>
           {["Severity: All", "Status: 2 selected", "Incident Provider name: All", "More (2)"].map(f => (
-            <button key={f} className="flex items-center gap-1 text-xs text-slate-300 border border-slate-700/50 rounded px-2.5 py-1.5 bg-slate-800/40 hover:bg-slate-700/50 transition-colors">
+            <button key={f} onClick={() => alert(`Filter: "${f}" — Advanced filters are available in the full Sentinel environment.`)} className="flex items-center gap-1 text-xs text-slate-300 border border-slate-700/50 rounded px-2.5 py-1.5 bg-slate-800/40 hover:bg-slate-700/50 transition-colors cursor-pointer">
               {f} <ChevronDown className="w-3 h-3 text-slate-500" />
             </button>
           ))}
@@ -208,9 +235,9 @@ export default function SentinelInterface() {
             </table>
 
             <div className="mt-auto px-4 py-2 border-t border-slate-700/30 bg-[#0f0f1c] flex items-center gap-3 text-xs text-slate-500">
-              <button className="px-3 py-1 border border-slate-700 rounded hover:bg-slate-700 text-slate-400">{"< Previous"}</button>
+              <button onClick={() => alert("No previous page — showing all incidents.")} className="px-3 py-1 border border-slate-700 rounded hover:bg-slate-700 text-slate-400 cursor-pointer">{"< Previous"}</button>
               <span>1 - {filtered.length} / {filtered.length}</span>
-              <button className="px-3 py-1 border border-slate-700 rounded hover:bg-slate-700 text-slate-400">{"Next >"}</button>
+              <button onClick={() => alert("No next page — showing all incidents.")} className="px-3 py-1 border border-slate-700 rounded hover:bg-slate-700 text-slate-400 cursor-pointer">{"Next >"}</button>
             </div>
           </div>
 
