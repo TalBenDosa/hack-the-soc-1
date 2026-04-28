@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   ClipboardList,
+  Swords,
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, setIsOpen, user, handleLogout, isAdmin }) => {
@@ -25,6 +26,7 @@ const Sidebar = ({ isOpen, setIsOpen, user, handleLogout, isAdmin }) => {
     { name: 'Progress', href: createPageUrl('Progress'), icon: BarChart2 },
     { name: 'Scenarios', href: createPageUrl('Scenarios'), icon: Target },
     { name: 'Quizzes', href: createPageUrl('QuizPage'), icon: ClipboardList },
+    { name: 'CTF Lab', href: '/CTF', icon: Swords },
   ];
 
   const adminLinks = isAdmin ? [
