@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { CROWDSTRIKE_DETECTIONS } from "./ctfData";
 import CrowdStrikeDetail from "./CrowdStrikeDetail";
+import { useInvestigation } from "./InvestigationContext";
 import { Search, RefreshCw, ChevronDown, Shield, AlertTriangle, Activity, Eye } from "lucide-react";
 
 const SEV_CONFIG = {
@@ -46,6 +47,17 @@ export default function CrowdStrikeInterface() {
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const { logStep } = useInvestigation();
+
+  const handleSelectDetection = (d) => {
+    setSelected(d);
+    logStep("view_detection", `Opened detection: "${d.scenario}" on ${d.hostname}`);
+  };
+
+  const handleSearch = (val) => {
+    setSearch(val);
+    if (val.length > 2) logStep("search", `Searched CrowdStrike detections for: "${val}"`);
+  };
 
   const filtered = CROWDSTRIKE_DETECTIONS.filter(d => {
     const matchSearch = d.scenario.toLowerCase().includes(search.toLowerCase()) ||
@@ -113,7 +125,7 @@ export default function CrowdStrikeInterface() {
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-800/60 border border-slate-700/50 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-500/50"
               placeholder="Search detections, hosts, users..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => handleSearch(e.target.value)}
             />
           </div>
           <select
@@ -142,7 +154,7 @@ export default function CrowdStrikeInterface() {
               return (
                 <div
                   key={d.id}
-                  onClick={() => setSelected(d)}
+                  onClick={() => handleSelectDetection(d)}
                   className={`bg-[#111111] border-l-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors p-4 ${
                     selected?.id === d.id
                       ? `border-l-red-500 bg-[#1a1a1a]`
@@ -193,7 +205,7 @@ export default function CrowdStrikeInterface() {
           {/* Detail Panel */}
           {selected && (
             <div className="flex-1 border-l border-slate-800/60 overflow-y-auto">
-              <CrowdStrikeDetail detection={selected} onClose={() => setSelected(null)} />
+              <CrowdStrikeDetail detection={selected} onClose={() => setSelected(null)} logStep={logStep} />
             </div>
           )}
         </div>

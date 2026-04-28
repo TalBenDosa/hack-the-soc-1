@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { SENTINEL_INCIDENTS } from "./ctfData";
 import SentinelIncidentDetail from "./SentinelIncidentDetail";
+import { useInvestigation } from "./InvestigationContext";
 import { Search, RefreshCw, ChevronDown, CheckSquare, Square, BarChart2, AlertTriangle, Zap, Info } from "lucide-react";
 
 const SEVERITY_CONFIG = {
@@ -21,6 +22,17 @@ export default function SentinelInterface() {
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
   const [checkedIds, setCheckedIds] = useState(new Set());
+  const { logStep } = useInvestigation();
+
+  const handleSelectIncident = (incident) => {
+    setSelected(incident);
+    logStep("view_incident", `Opened incident #${incident.id}: "${incident.title}"`);
+  };
+
+  const handleSearch = (val) => {
+    setSearch(val);
+    if (val.length > 2) logStep("search", `Searched Sentinel incidents for: "${val}"`);
+  };
 
   const filtered = SENTINEL_INCIDENTS.filter(i =>
     i.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -170,7 +182,7 @@ export default function SentinelInterface() {
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-800/60 border border-slate-700/50 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50"
               placeholder="Search by ID, title, tags, owner or product"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => handleSearch(e.target.value)}
             />
           </div>
           {["Severity: All", "Status: 2 selected", "Incident Provider name: All", "More (2)"].map(f => (
@@ -210,7 +222,7 @@ export default function SentinelInterface() {
                   return (
                     <tr
                       key={incident.id}
-                      onClick={() => setSelected(incident)}
+                      onClick={() => handleSelectIncident(incident)}
                       className={`border-b border-slate-800/50 cursor-pointer hover:bg-slate-800/30 transition-colors ${selected?.id === incident.id ? "bg-blue-900/20 border-l-2 border-l-blue-500" : ""}`}
                     >
                       <td className="px-3 py-2.5">
@@ -244,7 +256,7 @@ export default function SentinelInterface() {
           {/* Detail Panel */}
           {selected && (
             <div className="w-1/2 border-l border-slate-700/40 overflow-y-auto">
-              <SentinelIncidentDetail incident={selected} onClose={() => setSelected(null)} />
+              <SentinelIncidentDetail incident={selected} onClose={() => setSelected(null)} logStep={logStep} />
             </div>
           )}
 

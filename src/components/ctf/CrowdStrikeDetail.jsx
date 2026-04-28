@@ -44,9 +44,23 @@ function Field({ label, value, mono, copy: copyable }) {
   );
 }
 
-export default function CrowdStrikeDetail({ detection: d, onClose }) {
+export default function CrowdStrikeDetail({ detection: d, onClose, logStep }) {
   const [tab, setTab] = useState("overview");
   const [verdict, setVerdict] = useState(null);
+
+  const handleTabChange = (t) => {
+    setTab(t);
+    if (t === "raw") logStep?.("open_raw_log", `Opened raw alert JSON for: "${d.scenario}" on ${d.hostname}`);
+    if (t === "behaviors") logStep?.("open_behaviors", `Examined behaviors for: "${d.scenario}" on ${d.hostname}`);
+    if (t === "network") logStep?.("open_network", `Checked network connections for: "${d.scenario}" on ${d.hostname}`);
+    if (t === "iocs") logStep?.("check_iocs", `Inspected IOCs for: "${d.scenario}" on ${d.hostname}`);
+    if (t === "verdict") logStep?.("set_verdict", `Opened verdict panel for detection: "${d.scenario}"`);
+  };
+
+  const handleVerdict = (v) => {
+    setVerdict(v);
+    logStep?.("set_verdict", `Set verdict "${v}" for CrowdStrike detection: "${d.scenario}" on ${d.hostname}`);
+  };
 
   return (
     <div className="flex flex-col h-full bg-[#0f0f0f]">
@@ -70,7 +84,7 @@ export default function CrowdStrikeDetail({ detection: d, onClose }) {
       {/* Tabs */}
       <div className="flex border-b border-slate-800/60 bg-[#111111] px-2">
         {["overview", "behaviors", "network", "iocs", "raw", "verdict"].map(t => (
-          <TabBtn key={t} label={t.charAt(0).toUpperCase() + t.slice(1)} active={tab === t} onClick={() => setTab(t)} />
+          <TabBtn key={t} label={t.charAt(0).toUpperCase() + t.slice(1)} active={tab === t} onClick={() => handleTabChange(t)} />
         ))}
       </div>
 
@@ -247,7 +261,7 @@ export default function CrowdStrikeDetail({ detection: d, onClose }) {
               ].map(opt => (
                 <button
                   key={opt.v}
-                  onClick={() => setVerdict(opt.v)}
+                  onClick={() => handleVerdict(opt.v)}
                   className={`text-left p-3 rounded border-2 transition-all ${verdict === opt.v ? opt.active : opt.color}`}
                 >
                   <div className="flex items-center gap-2">

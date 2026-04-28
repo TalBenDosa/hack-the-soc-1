@@ -53,10 +53,22 @@ function KVRow({ label, value, mono, copyable }) {
   );
 }
 
-export default function SentinelIncidentDetail({ incident, onClose }) {
+export default function SentinelIncidentDetail({ incident, onClose, logStep }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [showRaw, setShowRaw] = useState(false);
   const [verdict, setVerdict] = useState(null);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === "logs") logStep?.("open_raw_log", `Opened raw log for incident #${incident.id}: "${incident.title}"`);
+    if (tab === "evidence") logStep?.("open_evidence", `Examined evidence for incident #${incident.id}: "${incident.title}"`);
+    if (tab === "verdict") logStep?.("set_verdict", `Opened verdict panel for incident #${incident.id}`);
+  };
+
+  const handleVerdict = (v) => {
+    setVerdict(v);
+    logStep?.("set_verdict", `Set verdict "${v}" for Sentinel incident #${incident.id}: "${incident.title}"`);
+  };
 
   const sev = SEVERITY_COLOR[incident.severity] || SEVERITY_COLOR.Informational;
 
@@ -85,7 +97,7 @@ export default function SentinelIncidentDetail({ incident, onClose }) {
         {["overview", "evidence", "logs", "verdict"].map(tab => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => handleTabChange(tab)}
             className={`px-4 py-2.5 text-xs font-medium capitalize border-b-2 transition-colors ${
               activeTab === tab
                 ? "text-blue-400 border-blue-500"
@@ -192,7 +204,7 @@ export default function SentinelIncidentDetail({ incident, onClose }) {
               ].map(opt => (
                 <button
                   key={opt.v}
-                  onClick={() => setVerdict(opt.v)}
+                  onClick={() => handleVerdict(opt.v)}
                   className={`text-left p-3 rounded border-2 transition-all ${verdict === opt.v ? opt.active : opt.color}`}
                 >
                   <div className="flex items-center gap-2">
