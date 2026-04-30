@@ -1,5 +1,4 @@
 import './App.css'
-import CTF from './pages/CTF'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -61,7 +60,6 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
-      <Route path="/CTF" element={<LayoutWrapper currentPageName="CTF"><CTF /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
