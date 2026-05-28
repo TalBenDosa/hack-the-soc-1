@@ -12,6 +12,8 @@ import { generateProxyLog } from './proxyLogGenerator';
 import { generateVPNLog } from './vpnLogGenerator';
 import { generateDHCPLog } from './dhcpLogGenerator';
 import { generateActiveDirectoryLog } from './adLogGenerator';
+import { generateDnsLog } from './dnsLogGenerator';
+import { generateEmailSecurityLog } from './emailSecurityLogGenerator';
 
 // A simple in-memory cache for templates
 let templateCache = null;
@@ -37,7 +39,8 @@ const fallbackHostnames = [
 // Expanded supported log source types for rich scenario generation
 const sourceTypes = [
     "Active Directory", "EDR", "Firewall", "Office 365", "Network IDS",
-    "Windows Security", "DLP", "DC", "Antivirus", "WAF", "Proxy", "VPN", "DHCP"
+    "Windows Security", "DLP", "DC", "Antivirus", "WAF", "Proxy", "VPN", "DHCP",
+    "DNS", "Email Security / Mail Gateway"
 ];
 
 const realisticSourceTypes = [
@@ -53,7 +56,9 @@ const realisticSourceTypes = [
     { type: 'WAF', weight: 6 },
     { type: 'Proxy', weight: 7 },
     { type: 'VPN', weight: 4 },
-    { type: 'DHCP', weight: 3 }
+    { type: 'DHCP', weight: 3 },
+    { type: 'DNS', weight: 10 },
+    { type: 'Email Security / Mail Gateway', weight: 8 }
 ];
 
 // Load templates from database with caching
@@ -384,6 +389,10 @@ export const generateRandomLog = (options = {}) => {
       return generateVPNLog(options);
     case "DHCP":
       return generateDHCPLog(options);
+    case "DNS":
+      return generateDnsLog(options);
+    case "Email Security / Mail Gateway":
+      return generateEmailSecurityLog(options);
     default:
       // Fallback to EDR if unknown source type
       return generateEDRLog(options);

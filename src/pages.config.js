@@ -1,4 +1,6 @@
 import AcceptAdminInvitation from './pages/AcceptAdminInvitation';
+import CTFChallenges from './pages/CTFChallenges';
+import CTFChallenge from './pages/CTFChallenge';
 import AccessibilityStatement from './pages/AccessibilityStatement';
 import Admin from './pages/Admin';
 import AdminEnvironmentAccess from './pages/AdminEnvironmentAccess';
@@ -31,6 +33,8 @@ import __Layout from './Layout.jsx';
 
 export const PAGES = {
     "AcceptAdminInvitation": AcceptAdminInvitation,
+    "CTFChallenges": CTFChallenges,
+    "CTFChallenge": CTFChallenge,
     "AccessibilityStatement": AccessibilityStatement,
     "Admin": Admin,
     "AdminEnvironmentAccess": AdminEnvironmentAccess,
