@@ -1,4 +1,10 @@
-# Hack The SOC — 60-Second Promo Video
+# Hack The SOC — Promo Video
+
+> **A rendered cut of this video now exists.** It was produced entirely from the real
+> application UI — see [`pipeline/`](./pipeline/) to reproduce or edit it. The delivered
+> cut runs 68 s with burned-in captions and no voiceover; the shot list below is the
+> original plan and remains the reference for a fuller screen-recorded version.
+
 
 **Narration:** English
 **Footage policy:** real product screens only — no generated/invented UI
