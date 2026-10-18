@@ -1,0 +1,7 @@
+{
+  "_comment": "Example IoC feed for -IocFile. Replace with indicators from your threat-intel platform. Hashes may be MD5, SHA1 or SHA256.",
+  "ips": ["203.0.113.66", "198.51.100.23"],
+  "domains": ["bad-update.example", "c2.attacker.example"],
+  "hashes": ["0000000000000000000000000000000000000000000000000000000000000000"],
+  "tools": ["evil-loader.exe"]
+}
