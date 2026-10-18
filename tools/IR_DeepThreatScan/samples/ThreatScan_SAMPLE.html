@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
+<title>Deep Threat Scan - LAB-WS01 - Critical</title>
+<style>
+:root{
+  --bg:#f4f6f9;--panel:#ffffff;--panel2:#f8fafc;--ink:#1d2733;--muted:#5d6b7b;--line:#dde3ea;--accent:#1f5fae;
+  --crit:#b3261e;--crit-bg:#fdecea;--high:#c25400;--high-bg:#fff1e5;--mod:#8a6d00;--mod-bg:#fff8db;--low:#2e7d32;--low-bg:#eaf5ea;--info:#607d8b;--info-bg:#eef2f5;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f141a;--panel:#171e26;--panel2:#1d2630;--ink:#e3e9ef;--muted:#9aa8b6;--line:#2b3641;--accent:#6aa7ef;
+    --crit:#ff8a80;--crit-bg:#3b1715;--high:#ffb26b;--high-bg:#3a2412;--mod:#f2d061;--mod-bg:#352d0f;--low:#81c784;--low-bg:#16301a;--info:#a7bac6;--info-bg:#1f2a33;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f141a;--panel:#171e26;--panel2:#1d2630;--ink:#e3e9ef;--muted:#9aa8b6;--line:#2b3641;--accent:#6aa7ef;
+  --crit:#ff8a80;--crit-bg:#3b1715;--high:#ffb26b;--high-bg:#3a2412;--mod:#f2d061;--mod-bg:#352d0f;--low:#81c784;--low-bg:#16301a;--info:#a7bac6;--info-bg:#1f2a33;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+a{color:var(--accent)}
+code,.mono{font-family:Consolas,"Cascadia Mono",Menlo,monospace;font-size:12.5px}
+header.top{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
+.top-inner{max-width:1500px;margin:0 auto;padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.brand{font-weight:700;letter-spacing:.2px}
+.brand small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.spacer{flex:1}
+.btn{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:6px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.layout{max-width:1500px;margin:0 auto;padding:16px;display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px}
+nav.toc{position:sticky;top:76px;align-self:start;font-size:13px}
+nav.toc a{display:block;padding:5px 10px;border-radius:6px;color:var(--muted);text-decoration:none}
+nav.toc a:hover{background:var(--panel);color:var(--ink)}
+@media (max-width:1000px){.layout{grid-template-columns:minmax(0,1fr)} nav.toc{display:none}}
+section.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:18px;box-shadow:var(--shadow)}
+section.card>h2{margin:0 0 12px;font-size:17px;display:flex;align-items:center;gap:8px}
+section.card>h2 .sub{font-weight:400;color:var(--muted);font-size:13px}
+.hero{display:grid;grid-template-columns:240px minmax(0,1fr);gap:20px}
+@media (max-width:700px){.hero{grid-template-columns:minmax(0,1fr)}}
+.verdict{border-radius:10px;padding:18px;text-align:center;color:#fff;display:flex;flex-direction:column;justify-content:center}
+.verdict .lbl{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.9}
+.verdict .lvl{font-size:34px;font-weight:800;line-height:1.1;margin:6px 0}
+.v-critical{background:#b3261e}.v-high{background:#c25400}.v-moderate{background:#9a7b00}.v-low{background:#2e7d32}.v-info{background:#546e7a}
+.headline{font-size:19px;font-weight:700;margin:0 0 6px}
+.just{color:var(--muted);margin:0 0 10px}
+ul.plain{margin:0;padding-left:18px}
+ul.plain li{margin:3px 0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:16px}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel2);cursor:default}
+.kpi.click{cursor:pointer}.kpi.click:hover{border-color:var(--accent)}
+.kpi .n{font-size:24px;font-weight:800}
+.kpi .t{font-size:12px;color:var(--muted)}
+.kpi.k-critical .n{color:var(--crit)}.kpi.k-high .n{color:var(--high)}.kpi.k-moderate .n{color:var(--mod)}.kpi.k-low .n{color:var(--low)}
+.badge{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700;white-space:nowrap}
+.r-critical{background:var(--crit-bg);color:var(--crit)}.r-high{background:var(--high-bg);color:var(--high)}.r-moderate{background:var(--mod-bg);color:var(--mod)}.r-low{background:var(--low-bg);color:var(--low)}.r-info{background:var(--info-bg);color:var(--info)}
+.chip{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:0 6px;margin:1px 3px 1px 0;font-size:12px;background:var(--panel2);cursor:pointer;color:var(--ink)}
+.chip:hover{border-color:var(--accent)}
+.chip.static{cursor:default}
+ol.actions{margin:0;padding-left:0;list-style:none;counter-reset:a}
+ol.actions li{display:grid;grid-template-columns:28px 26px minmax(0,1fr);gap:8px;align-items:start;padding:9px 0;border-bottom:1px solid var(--line)}
+ol.actions li:last-child{border-bottom:none}
+ol.actions .num{font-weight:800;color:var(--muted);text-align:right}
+ol.actions li.done .txt{text-decoration:line-through;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(330px,100%),1fr));gap:12px}
+.fcard{border:1px solid var(--line);border-left:5px solid var(--info);border-radius:8px;padding:12px 14px;background:var(--panel2)}
+.fcard.b-critical{border-left-color:var(--crit)}.fcard.b-high{border-left-color:var(--high)}.fcard.b-moderate{border-left-color:var(--mod)}.fcard.b-low{border-left-color:var(--low)}
+.fcard h3{margin:4px 0 6px;font-size:14.5px}
+.fcard .meta{color:var(--muted);font-size:12px;word-break:break-all}
+.fcard .why{margin:8px 0 6px;font-size:13px}
+.fcard .act{font-size:12.5px;border-top:1px dashed var(--line);padding-top:6px;margin-top:6px}
+.matrix{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.tcol{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel2)}
+.tcol .th{padding:7px 9px;font-weight:700;font-size:12.5px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+.tcol.empty{opacity:.55}
+.tech{margin:6px;padding:6px 8px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid transparent}
+.tech:hover{border-color:var(--accent)}
+.tech b{display:block;font-size:11.5px}
+.tech.r-critical,.tech.r-high,.tech.r-moderate,.tech.r-low,.tech.r-info{font-weight:400}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.controls input[type=search],.controls select{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:6px;padding:6px 9px;font:inherit;font-size:13px}
+.controls input[type=search]{min-width:min(240px,100%);flex:1}
+.toggle{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer;user-select:none;background:var(--panel2)}
+.toggle.off{opacity:.4;text-decoration:line-through}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table.grid{border-collapse:collapse;width:100%;font-size:13px}
+table.grid th{position:sticky;top:0;background:var(--panel2);text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+table.grid td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top;word-break:break-word}
+table.grid tr.row{cursor:pointer}
+table.grid tr.row:hover td{background:var(--panel2)}
+table.grid tr.detail td{background:var(--panel2);padding:12px 16px}
+table.kv{border-collapse:collapse;width:100%;font-size:12.5px}
+table.kv th{width:170px;text-align:left;color:var(--muted);font-weight:600;padding:4px 8px;vertical-align:top}
+table.kv td{padding:4px 8px;word-break:break-all;white-space:pre-wrap;font-family:Consolas,"Cascadia Mono",Menlo,monospace}
+.detail h4{margin:10px 0 4px;font-size:12.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.tl{list-style:none;margin:0;padding:0;border-left:2px solid var(--line);margin-left:8px}
+.tl li{position:relative;padding:4px 0 8px 16px}
+.tl li:before{content:"";position:absolute;left:-7px;top:9px;width:12px;height:12px;border-radius:50%;background:var(--info)}
+.tl li.d-critical:before{background:var(--crit)}.tl li.d-high:before{background:var(--high)}.tl li.d-moderate:before{background:var(--mod)}.tl li.d-low:before{background:var(--low)}
+.tl .when{font-family:Consolas,Menlo,monospace;font-size:12px;color:var(--muted)}
+.tl .day{font-weight:700;margin:10px 0 4px -8px;padding-left:0;list-style:none}
+.tl .day:before{display:none}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:10px}
+.pitem{display:grid;grid-template-columns:14px minmax(0,1fr);gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.dot{width:10px;height:10px;border-radius:50%;margin-top:5px}
+.s-good{background:var(--low)}.s-warning{background:var(--mod)}.s-bad{background:var(--crit)}.s-info{background:var(--info)}
+.pitem .c{font-weight:600}.pitem .v{font-size:12.5px}.pitem .d{font-size:12px;color:var(--muted)}
+.hostgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-bottom:14px}
+.hostgrid div{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:13px;word-break:break-word}
+.hostgrid b{display:block;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.st{font-weight:700;font-size:12px}.st-ok{color:var(--low)}.st-partial{color:var(--mod)}.st-failed{color:var(--crit)}.st-skipped{color:var(--info)}
+.muted{color:var(--muted)}
+.empty-state{color:var(--muted);font-style:italic;padding:6px 0}
+table.matrix5{border-collapse:collapse;font-size:12px;margin-top:8px}
+table.matrix5 td,table.matrix5 th{border:1px solid var(--line);padding:6px 10px;text-align:center}
+footer{max-width:1500px;margin:0 auto;padding:6px 16px 30px;color:var(--muted);font-size:12px}
+.flash{outline:3px solid var(--accent);outline-offset:-3px}
+@media print{
+  header.top,nav.toc,.controls,.noprint,#inventory{display:none!important}
+  .layout{display:block;padding:0}
+  section.card{break-inside:avoid-page;box-shadow:none}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+<script type="application/json" id="report-data">{
+  "schema": "sdema.deepthreatscan/9.0",
+  "metadata": {
+    "Tool": "SDEMA IRT : Deep Threat Scan",
+    "Version": "9.0",
+    "Host": "LAB-WS01",
+    "Fqdn": null,
+    "Domain": null,
+    "CaseId": "",
+    "Analyst": "",
+    "Collector": "\\",
+    "Elevated": true,
+    "ScanProfile": "Standard",
+    "LookbackHours": 72,
+    "FileLookbackDays": 30,
+    "Started": "2026-10-18 08:33:39",
+    "Finished": "2026-10-18 08:33:40",
+    "DurationSec": 1.0,
+    "TimeZone": null,
+    "PowerShell": "7.4.6",
+    "IocFeed": {
+      "Path": "/tmp/dts_feed.txt",
+      "IPs": 1,
+      "Domains": 1,
+      "Hashes": 1,
+      "Tools": 0
+    }
+  },
+  "summary": {
+    "OverallRisk": "Critical",
+    "Justification": "Driven by F-0002 'Connection with known C2 infrastructure' (Network; impact 10/10, confidence 10/10).",
+    "Headline": "Likely ACTIVE RANSOMWARE incident",
+    "Assessment": [
+      "High/Critical findings span 4 ATT\u0026CK tactic(s): Persistence -\u003e Defense Evasion -\u003e Command and Control -\u003e Impact.",
+      "Ransomware indicators are present (notes, encrypted extensions, recovery inhibition or mass file writes).",
+      "Network indicators suggest command-and-control or data staging.",
+      "Persistence mechanisms were found - malware is likely to survive a reboot.",
+      "Security controls or logs were tampered with - absence of other evidence is less reliable."
+    ],
+    "VisibilityGaps": [],
+    "Counts": {
+      "Critical": 9,
+      "High": 0,
+      "Moderate": 0,
+      "Low": 1,
+      "Info": 0
+    },
+    "PostureFindings": 1,
+    "IocMatches": 1,
+    "HighConfidenceIocs": 1,
+    "Correlations": 4,
+    "TacticsObserved": [
+      "Command and Control",
+      "Impact",
+      "Defense Evasion",
+      "Persistence"
+    ],
+    "CoverageScore": 100
+  },
+  "hostInfo": {
+    "Computer Name": "LAB-WS01",
+    "Operating System": "Windows 11 Enterprise (build 22631)"
+  },
+  "findings": [
+    {
+      "Id": "F-0002",
+      "Kind": "Threat",
+      "Category": "Network",
+      "Title": "Connection with known C2 infrastructure",
+      "Risk": "Critical",
+      "Impact": 10,
+      "Confidence": 10,
+      "Mitre": "T1071",
+      "Tactics": "Command and Control",
+      "Entity": "svch0st.exe -\u003e 45.133.1.145:443",
+      "Source": "Live TCP connection",
+      "Time": "",
+      "ProcessId": 4242,
+      "Path": "C:\\Users\\bob\\AppData\\Roaming\\svch0st.exe",
+      "RemoteIp": "45.133.1.145",
+      "User": "",
+      "Tags": [
+        "c2"
+      ],
+      "Related": [],
+      "Reasons": [
+        "Connection with known C2 infrastructure (impact 10/10, confidence 10/10) - IP 45.133.1.145 is listed as command-and-control"
+      ],
+      "IoCs": [
+        "IP: 45.133.1.145"
+      ],
+      "Evidence": {},
+      "Recommendation": "Block the remote endpoint, search proxy/firewall/DNS logs for other hosts talking to it, and acquire the communicating binary for analysis."
+    },
+    {
+      "Id": "F-0004",
+      "Kind": "Threat",
+      "Category": "Ransomware",
+      "Title": "Ransom note 'HOW_TO_DECRYPT.txt' found in 14 folder(s)",
+      "Risk": "Critical",
+      "Impact": 10,
+      "Confidence": 10,
+      "Mitre": "T1486",
+      "Tactics": "Impact",
+      "Entity": "HOW_TO_DECRYPT.txt",
+      "Source": "File system",
+      "Time": "2026-10-18 07:33:40",
+      "ProcessId": -1,
+      "Path": "",
+      "RemoteIp": "",
+      "User": "",
+      "Tags": [
+        "ransomware"
+      ],
+      "Related": [],
+      "Reasons": [],
+      "IoCs": [],
+      "Evidence": {},
+      "Recommendation": "Treat as ACTIVE RANSOMWARE: isolate the host now, disable the affected accounts, take backups offline, identify the encrypting process and check other hosts for the same note/extension."
+    },
+    {
+      "Id": "F-0010",
+      "Kind": "Threat",
+      "Category": "Correlation",
+      "Title": "Ransomware activity pattern: 3 independent indicators",
+      "Risk": "Critical",
+      "Impact": 10,
+      "Confidence": 10,
+      "Mitre": "T1486, T1490",
+      "Tactics": "Impact",
+      "Entity": "Host",
+      "Source": "Correlation engine",
+      "Time": "",
+      "ProcessId": -1,
+      "Path": "",
+      "RemoteIp": "",
+      "User": "",
+      "Tags": [
+        "ransomware",
+        "correlated"
+      ],
+      "Related": [
+        "F-0003",
+        "F-0004"
+      ],
+      "Reasons": [],
+      "IoCs": [],
+      "Evidence": {
+        "Indicators": "Recovery inhibition (shadow copy / backup deletion); Ransom notes; No shadow copies remain"
+      },
+      "Recommendation": "ACTIVE RANSOMWARE: isolate the host immediately (network containment, do not power off), disable compromised accounts, take backups offline and start the ransomware incident procedure."
+    },
+    {
+      "Id": "F-0003",
+      "Kind": "Threat",
+      "Category": "Execution",
+      "Title": "Shadow copy deletion",
+      "Risk": "Critical",
+      "Impact": 10,
+      "Confidence": 9,
+      "Mitre": "T1490",
+      "Tactics": "Impact",
+      "Entity": "vssadmin.exe",
+      "Source": "Security 4688",
+      "Time": "2026-10-18 06:33:40",
+      "ProcessId": -1,
+      "Path": "",
+      "RemoteIp": "",
+      "User": "",
+      "Tags": [
+        "execution"
+      ],
+      "Related": [],
+      "Reasons": [
+        "Shadow copy deletion (impact 10/10, confidence 9/10) - matched: vssadmin.exe delete shadows"
+      ],
+      "IoCs": [],
+      "Evidence": {},
+      "Recommendation": "Recovery inhibition is a ransomware precursor: isolate the host, protect backups, and identify the account/process that ran the command (see evidence)."
+    },
+    {
+      "Id": "F-0008",
+      "Kind": "Threat",
+      "Category": "Correlation",
+      "Title": "Suspicious process svch0st.exe (PID 4242) is communicating with a suspicious endpoint",
+      "Risk": "Critical",
+      "Impact": 10,
+      "Confidence": 9,
+      "Mitre": "T1036.005, T1071",
+      "Tactics": "Defense Evasion, Command and Control",
+      "Entity": "svch0st.exe (PID 4242)",
+      "Source": "Correlation engine",
+      "Time": "",
+      "ProcessId": 4242,
+      "Path": "C:\\Users\\bob\\AppData\\Roaming\\svch0st.exe",
+      "RemoteIp": "",
+      "User": "",
+      "Tags": [
+        "c2",
+        "correlated"
+      ],
+      "Related": [
+        "F-0001",
+        "F-0002"
+      ],
+      "Reasons": [],
+      "IoCs": [],
+      "Evidence": {
+        "ProcessFinding": "F-0001 [Critical] Unsigned process running from a user-writable location",
+        "NetworkFindings": "F-0002 [Critical] Connection with known C2 infrastructure",
+        "ExternalEndpoints": "45.133.1.145:443"
+      },
+      "Recommendation": "Isolate the host, capture the process memory, block the remote endpoint and hunt for it fleet-wide."
+    },
+    {
+      "Id": "F-0009",
+      "Kind": "Threat",
+      "Category": "Correlation",
+      "Title": "Autorun persistence launches a flagged binary (svch0st.exe)",
+      "Risk": "Critical",
+      "Impact": 10,
+      "Confidence": 9,
+      "Mitre": "T1547, T1036.005",
+      "Tactics": "Persistence, Defense Evasion",
+      "Entity": "HKU\\bob\\...\\Run\\Updater",
+      "Source": "Correlation engine",
+      "Time": "",
+      "ProcessId": -1,
+      "Path": "C:\\Users\\bob\\AppData\\Roaming\\svch0st.exe",
+      "RemoteIp": "",
+      "User": "",
+      "Tags": [
+        "persistence",
+        "correlated"
+      ],
+      "Related": [
+        "F-0001"
+      ],
+      "Reasons": [],
+      "IoCs": [],
+      "Evidence": {
+        "Mechanism": "Autorun",
+        "Entry": "HKU\\bob\\...\\Run\\Updater",
+        "Binary": "C:\\Users\\bob\\AppData\\Roaming\\svch0st.exe",
+        "BinaryFinding": "F-0001 [Critical] Unsigned process running from a user-writable location"
+      },
+      "Recommendation": "Malware with persistence: isolate, acquire the binary and the persistence entry, then remove both after evidence collection."
+    },
+    {
+      "Id": "F-0005",
+      "Kind": "Threat",
+      "Category": "DefenseEvasion",
+      "Title": "Security event log was cleared",
+      "Risk": "Critical",
+      "Impact": 9,
+      "Confidence": 9,
+      "Mitre": "T1070.001",
+      "Tactics": "Defense Evasion",
+      "Entity": "Security log",
+      "Source": "Security 1102",
+      "Time": "2026-10-18 05:33:40",
+      "ProcessId": -1,
+      "Path": "",
+      "RemoteIp": "",
+      "User": "",
+      "Tags": [
+        "evasion"
+      ],
+      "Related": [],
+      "Reasons": [],
+      "IoCs": [],
+      "Evidence": {},
+      "Recommendation": "Log clearing destroys evidence: escalate, collect remaining logs immediately and check central logging (SIEM) for the cleared period."
+    },
+    {
+      "Id": "F-0011",
+      "Kind": "Threat",
+      "Category": "Correlation",
+      "Title": "Defence evasion observed alongside other high-risk activity",
+      "Risk": "Critical",
+      "Impact": 9,
+      "Confidence": 8,
+      "Mitre": "T1562.001, T1070",
+      "Tactics": "Defense Evasion",
+      "Entity": "Host",
+      "Source": "Correlation engine",
+      "Time": "",
+      "ProcessId": -1,
+      "Path": "",
+      "RemoteIp": "",
+      "User": "",
+      "Tags": [
+        "evasion",
+        "correlated"
+      ],
+      "Related": [
+        "F-0005",
+        "F-0001",
+        "F-0002",
+        "F-0003",
+        "F-0004"
+      ],
+      "Reasons": [],
+      "IoCs": [],
+      "Evidence": {
+        "Evasion": "F-0005 Security event log was cleared",
+        "Other": "F-0001 Unsigned process running from a user-writable location; F-0002 Connection with known C2 infrastructure; F-0003 Shadow copy deletion; F-0004 Ransom note 'HOW_TO_DECRYPT.txt' found in 14 folder(s)"
+      },
+      "Recommendation": "Disabling controls while other malicious activity is present indicates an active adversary: escalate to incident response and preserve evidence immediately."
+    },
+    {
+      "Id": "F-0001",
+      "Kind": "Threat",
+      "Category": "Process",
+      "Title": "Unsigned process running from a user-writable location",
+      "Risk": "Critical",
+      "Impact": 8,
+      "Confidence": 9,
+      "Mitre": "T1036.005",
+      "Tactics": "Defense Evasion",
+      "Entity": "svch0st.exe (PID 4242)",
+      "Source": "Live process",
+      "Time": "2026-10-18 03:33:40",
+      "ProcessId": 4242,
+      "Path": "C:\\Users\\bob\\AppData\\Roaming\\svch0st.exe",
+      "RemoteIp": "",
+      "User": "",
+      "Tags": [
+        "process"
+      ],
+      "Related": [],
+      "Reasons": [
+        "File name imitates system binary 'svchost.exe' (typosquatting) (impact 8/10, confidence 6/10) - c:\\users\\bob\\appdata\\roaming\\svch0st.exe",
+        "Unsigned process running from a user-writable location (impact 8/10, confidence 8/10) - C:\\Users\\bob\\AppData\\Roaming\\svch0st.exe"
+      ],
+      "IoCs": [],
+      "Evidence": {
+        "Process": "svch0st.exe",
+        "PID": "4242",
+        "CommandLine": "C:\\Users\\bob\\AppData\\Roaming\\svch0st.exe -k \u003cscript\u003ealert(1)\u003c/script\u003e"
+      },
+      "Recommendation": "Acquire the file, hash and sandbox it, determine how it arrived (Zone.Identifier, e-mail, browser) and quarantine it via EDR."
+    },
+    {
+      "Id": "F-0006",
+      "Kind": "Posture",
+      "Category": "Posture",
+      "Title": "SMBv1 server protocol is enabled",
+      "Risk": "Low",
+      "Impact": 4,
+      "Confidence": 6,
+      "Mitre": "",
+      "Tactics": "",
+      "Entity": "SMB1",
+      "Source": "test",
+      "Time": "",
+      "ProcessId": -1,
+      "Path": "",
+      "RemoteIp": "",
+      "User": "",
+      "Tags": [],
+      "Related": [],
+      "Reasons": [],
+      "IoCs": [],
+      "Evidence": {},
+      "Recommendation": "Review the evidence and validate with the system owner whether the activity is authorised."
+    },
+    {
+      "Id": "F-0007",
+      "Kind": "Threat",
+      "Category": "Process",
+      "Title": "duplicate check",
+      "Risk": "Low",
+      "Impact": 3,
+      "Confidence": 3,
+      "Mitre": "",
+      "Tactics": "",
+      "Entity": "",
+      "Source": "",
+      "Time": "",
+      "ProcessId": -1,
+      "Path": "",
+      "RemoteIp": "",
+      "User": "",
+      "Tags": [],
+      "Related": [],
+      "Reasons": [],
+      "IoCs": [],
+      "Evidence": {},
+      "Recommendation": "Review the evidence and validate with the system owner whether the activity is authorised."
+    }
+  ],
+  "iocMatches": [
+    {
+      "FindingId": "F-0002",
+      "IoC": "45.133.1.145",
+      "Type": "IP",
+      "Description": "Connection with known C2 infrastructure",
+      "Impact": 10,
+      "Confidence": 10,
+      "ThreatIntel": "C2 tracker / IoC feed",
+      "Category": "Network",
+      "Entity": "svch0st.exe -\u003e 45.133.1.145:443"
+    }
+  ],
+  "recommendations": [
+    {
+      "Priority": 1,
+      "Risk": "Critical",
+      "Action": "Contain the host now: isolate it from the network via EDR (keep it powered on) and notify the incident manager.",
+      "FindingIds": []
+    },
+    {
+      "Priority": 2,
+      "Risk": "Critical",
+      "Action": "Preserve volatile evidence before remediation: memory image (e.g. winpmem / Magnet RAM Capture) and a triage collection (KAPE / Velociraptor). Keep this report folder and its SHA-256 manifest.",
+      "FindingIds": []
+    },
+    {
+      "Priority": 3,
+      "Risk": "Critical",
+      "Action": "Block the remote endpoint, search proxy/firewall/DNS logs for other hosts talking to it, and acquire the communicating binary for analysis.",
+      "FindingIds": [
+        "F-0002"
+      ]
+    },
+    {
+      "Priority": 4,
+      "Risk": "Critical",
+      "Action": "Treat as ACTIVE RANSOMWARE: isolate the host now, disable the affected accounts, take backups offline, identify the encrypting process and check other hosts for the same note/extension.",
+      "FindingIds": [
+        "F-0004"
+      ]
+    },
+    {
+      "Priority": 5,
+      "Risk": "Critical",
+      "Action": "ACTIVE RANSOMWARE: isolate the host immediately (network containment, do not power off), disable compromised accounts, take backups offline and start the ransomware incident procedure.",
+      "FindingIds": [
+        "F-0010"
+      ]
+    },
+    {
+      "Priority": 6,
+      "Risk": "Critical",
+      "Action": "Recovery inhibition is a ransomware precursor: isolate the host, protect backups, and identify the account/process that ran the command (see evidence).",
+      "FindingIds": [
+        "F-0003"
+      ]
+    },
+    {
+      "Priority": 7,
+      "Risk": "Critical",
+      "Action": "Isolate the host, capture the process memory, block the remote endpoint and hunt for it fleet-wide.",
+      "FindingIds": [
+        "F-0008"
+      ]
+    },
+    {
+      "Priority": 8,
+      "Risk": "Critical",
+      "Action": "Malware with persistence: isolate, acquire the binary and the persistence entry, then remove both after evidence collection.",
+      "FindingIds": [
+        "F-0009"
+      ]
+    },
+    {
+      "Priority": 9,
+      "Risk": "Critical",
+      "Action": "Log clearing destroys evidence: escalate, collect remaining logs immediately and check central logging (SIEM) for the cleared period.",
+      "FindingIds": [
+        "F-0005"
+      ]
+    },
+    {
+      "Priority": 10,
+      "Risk": "Critical",
+      "Action": "Disabling controls while other malicious activity is present indicates an active adversary: escalate to incident response and preserve evidence immediately.",
+      "FindingIds": [
+        "F-0011"
+      ]
+    },
+    {
+      "Priority": 11,
+      "Risk": "Critical",
+      "Action": "Acquire the file, hash and sandbox it, determine how it arrived (Zone.Identifier, e-mail, browser) and quarantine it via EDR.",
+      "FindingIds": [
+        "F-0001"
+      ]
+    },
+    {
+      "Priority": 12,
+      "Risk": "Critical",
+      "Action": "Scope the incident: hunt for the IoCs and file hashes in this report across the fleet (EDR / SIEM / proxy logs).",
+      "FindingIds": []
+    },
+    {
+      "Priority": 13,
+      "Risk": "Critical",
+      "Action": "Reset credentials of accounts that logged on to this host during the look-back window, starting with privileged accounts.",
+      "FindingIds": []
+    }
+  ],
+  "attack": [
+    {
+      "Tactic": "Resource Development",
+      "MaxRisk": "",
+      "Techniques": []
+    },
+    {
+      "Tactic": "Initial Access",
+      "MaxRisk": "",
+      "Techniques": []
+    },
+    {
+      "Tactic": "Execution",
+      "MaxRisk": "",
+      "Techniques": []
+    },
+    {
+      "Tactic": "Persistence",
+      "MaxRisk": "Critical",
+      "Techniques": [
+        {
+          "Id": "T1547",
+          "Name": "Boot or Logon Autostart Execution",
+          "Count": 1,
+          "MaxRisk": "Critical",
+          "FindingIds": [
+            "F-0009"
+          ]
+        }
+      ]
+    },
+    {
+      "Tactic": "Privilege Escalation",
+      "MaxRisk": "",
+      "Techniques": []
+    },
+    {
+      "Tactic": "Defense Evasion",
+      "MaxRisk": "Critical",
+      "Techniques": [
+        {
+          "Id": "T1036.005",
+          "Name": "Match Legitimate Name or Location",
+          "Count": 3,
+          "MaxRisk": "Critical",
+          "FindingIds": [
+            "F-0008",
+            "F-0009",
+            "F-0001"
+          ]
+        },
+        {
+          "Id": "T1070.001",
+          "Name": "Clear Windows Event Logs",
+          "Count": 1,
+          "MaxRisk": "Critical",
+          "FindingIds": [
+            "F-0005"
+          ]
+        },
+        {
+          "Id": "T1562.001",
+          "Name": "Disable or Modify Tools",
+          "Count": 1,
+          "MaxRisk": "Critical",
+          "FindingIds": [
+            "F-0011"
+          ]
+        },
+        {
+          "Id": "T1070",
+          "Name": "Indicator Removal",
+          "Count": 1,
+          "MaxRisk": "Critical",
+          "FindingIds": [
+            "F-0011"
+          ]
+        }
+      ]
+    },
+    {
+      "Tactic": "Credential Access",
+      "MaxRisk": "",
+      "Techniques": []
+    },
+    {
+      "Tactic": "Discovery",
+      "MaxRisk": "",
+      "Techniques": []
+    },
+    {
+      "Tactic": "Lateral Movement",
+      "MaxRisk": "",
+      "Techniques": []
+    },
+    {
+      "Tactic": "Command and Control",
+      "MaxRisk": "Critical",
+      "Techniques": [
+        {
+          "Id": "T1071",
+          "Name": "Application Layer Protocol",
+          "Count": 2,
+          "MaxRisk": "Critical",
+          "FindingIds": [
+            "F-0002",
+            "F-0008"
+          ]
+        }
+      ]
+    },
+    {
+      "Tactic": "Exfiltration",
+      "MaxRisk": "",
+      "Techniques": []
+    },
+    {
+      "Tactic": "Impact",
+      "MaxRisk": "Critical",
+      "Techniques": [
+        {
+          "Id": "T1486",
+          "Name": "Data Encrypted for Impact",
+          "Count": 2,
+          "MaxRisk": "Critical",
+          "FindingIds": [
+            "F-0004",
+            "F-0010"
+          ]
+        },
+        {
+          "Id": "T1490",
+          "Name": "Inhibit System Recovery",
+          "Count": 2,
+          "MaxRisk": "Critical",
+          "FindingIds": [
+            "F-0010",
+            "F-0003"
+          ]
+        }
+      ]
+    }
+  ],
+  "timeline": [
+    {
+      "Time": "2026-10-18 03:33:40",
+      "Id": "F-0001",
+      "Risk": "Critical",
+      "Title": "Unsigned process running from a user-writable location",
+      "Entity": "svch0st.exe (PID 4242)",
+      "Source": "Live process"
+    },
+    {
+      "Time": "2026-10-18 05:33:40",
+      "Id": "F-0005",
+      "Risk": "Critical",
+      "Title": "Security event log was cleared",
+      "Entity": "Security log",
+      "Source": "Security 1102"
+    },
+    {
+      "Time": "2026-10-18 06:33:40",
+      "Id": "F-0003",
+      "Risk": "Critical",
+      "Title": "Shadow copy deletion",
+      "Entity": "vssadmin.exe",
+      "Source": "Security 4688"
+    },
+    {
+      "Time": "2026-10-18 07:33:40",
+      "Id": "F-0004",
+      "Risk": "Critical",
+      "Title": "Ransom note 'HOW_TO_DECRYPT.txt' found in 14 folder(s)",
+      "Entity": "HOW_TO_DECRYPT.txt",
+      "Source": "File system"
+    }
+  ],
+  "posture": [
+    {
+      "Area": "Telemetry",
+      "Check": "Sysmon",
+      "Value": "Running",
+      "Status": "Good",
+      "Detail": ""
+    },
+    {
+      "Area": "Hardening",
+      "Check": "LSA protection (RunAsPPL)",
+      "Value": "Not enabled",
+      "Status": "Warning",
+      "Detail": "Protects LSASS against credential dumping"
+    }
+  ],
+  "coverage": [
+    {
+      "Name": "Get-Test",
+      "Label": "Synthetic data",
+      "Status": "OK",
+      "Items": 1,
+      "Findings": 6,
+      "DurationSec": 0.1,
+      "Notes": [
+        "synthetic"
+      ]
+    }
+  ],
+  "inventory": {
+    "processes": [
+      {
+        "PID": "4242",
+        "Name": "svch0st.exe",
+        "Path": "C:\\Users\\bob\\AppData\\Roaming\\svch0st.exe",
+        "Flag": "High: test"
+      }
+    ]
+  }
+}</script>
+<header class="top"><div class="top-inner" id="topbar"></div></header>
+<div class="layout">
+  <nav class="toc" id="toc"></nav>
+  <main id="main"></main>
+</div>
+<footer id="footer"></footer>
+<script>
+(function () {
+  'use strict';
+  var D;
+  try { D = JSON.parse(document.getElementById('report-data').textContent); }
+  catch (e) { document.getElementById('main').textContent = 'Report data could not be loaded: ' + e; return; }
+
+  var RANK = { Critical: 4, High: 3, Moderate: 2, Low: 1, Info: 0 };
+  var RISKS = ['Critical', 'High', 'Moderate', 'Low', 'Info'];
+  function arr(x) {
+    if (x === null || x === undefined) return [];
+    if (Array.isArray(x)) return x;
+    if (typeof x === 'object' && Array.isArray(x.value)) return x.value;
+    return [x];
+  }
+  function obj(x) { return (x && typeof x === 'object' && !Array.isArray(x)) ? x : {}; }
+  function add(el, c) {
+    if (c === null || c === undefined || c === false) return;
+    if (Array.isArray(c)) { for (var i = 0; i < c.length; i++) add(el, c[i]); return; }
+    if (typeof c === 'string' || typeof c === 'number' || typeof c === 'boolean') { el.appendChild(document.createTextNode(String(c))); return; }
+    el.appendChild(c);
+  }
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    if (attrs) {
+      for (var k in attrs) {
+        if (!Object.prototype.hasOwnProperty.call(attrs, k)) continue;
+        var v = attrs[k];
+        if (v === null || v === undefined || v === false) continue;
+        if (k === 'class') el.className = v;
+        else if (k === 'text') el.textContent = v;
+        else if (k.indexOf('on') === 0) el.addEventListener(k.slice(2), v);
+        else el.setAttribute(k, v === true ? '' : v);
+      }
+    }
+    for (var i = 2; i < arguments.length; i++) add(el, arguments[i]);
+    return el;
+  }
+  function lc(s) { return String(s || '').toLowerCase(); }
+  function badge(r) { r = r || 'Info'; return h('span', { 'class': 'badge r-' + lc(r) }, r); }
+  function card(id, title, sub) {
+    var s = h('section', { 'class': 'card', id: id }, h('h2', null, title, sub ? h('span', { 'class': 'sub' }, sub) : null));
+    return s;
+  }
+
+  var meta = obj(D.metadata), sum = obj(D.summary), counts = obj(sum.Counts);
+  var findings = arr(D.findings);
+  var byId = {};
+  findings.forEach(function (f) { byId[f.Id] = f; });
+  var threat = findings.filter(function (f) { return f.Kind === 'Threat'; });
+  var main = document.getElementById('main');
+  var findingsApi = null;
+
+  function idChip(id) {
+    return h('span', { 'class': 'chip', title: byId[id] ? byId[id].Title : id, onclick: function () { if (findingsApi) findingsApi.focus(id); } }, id);
+  }
+
+  // ---------------- Top bar ----------------
+  (function () {
+    var bar = document.getElementById('topbar');
+    add(bar, h('div', { 'class': 'brand' }, (meta.Tool || 'Deep Threat Scan') + ' v' + (meta.Version || ''),
+      h('small', null, 'Host ' + (meta.Host || '?') + (meta.CaseId ? '  |  Case ' + meta.CaseId : '') + '  |  ' + (meta.Finished || ''))));
+    add(bar, badge(sum.OverallRisk));
+    add(bar, h('span', { 'class': 'spacer' }));
+    add(bar, h('button', { 'class': 'btn', onclick: function () { window.print(); } }, 'Print / PDF'));
+    add(bar, h('button', { 'class': 'btn', onclick: function () { if (findingsApi) findingsApi.exportCsv(); } }, 'Export findings CSV'));
+    add(bar, h('button', { 'class': 'btn', onclick: function () {
+      var root = document.documentElement;
+      var cur = root.getAttribute('data-theme');
+      var dark = cur ? cur === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.setAttribute('data-theme', dark ? 'light' : 'dark');
+    } }, 'Theme'));
+  })();
+
+  // ---------------- TOC ----------------
+  var sections = [['summary', 'Executive summary'], ['actions', 'Response actions'], ['key', 'Key findings'], ['attack', 'MITRE ATT&CK'],
+    ['timeline', 'Timeline'], ['findings', 'All findings'], ['iocs', 'Indicators (IoC)'], ['posture', 'Security posture'],
+    ['coverage', 'Scan coverage'], ['inventory', 'Artifact inventory'], ['method', 'Methodology']];
+  var toc = document.getElementById('toc');
+  sections.forEach(function (s) { add(toc, h('a', { href: '#' + s[0] }, s[1])); });
+
+  // ---------------- Executive summary ----------------
+  (function () {
+    var s = card('summary', 'Executive summary', meta.Started ? 'scan ' + meta.Started + ' - ' + meta.Finished : '');
+    var risk = sum.OverallRisk || 'Low';
+    var verdict = h('div', { 'class': 'verdict v-' + lc(risk) }, h('div', { 'class': 'lbl' }, 'Overall risk'), h('div', { 'class': 'lvl' }, risk),
+      h('div', { 'class': 'lbl' }, (counts.Critical || 0) + ' critical  /  ' + (counts.High || 0) + ' high'));
+    var right = h('div', null, h('p', { 'class': 'headline' }, sum.Headline || ''), h('p', { 'class': 'just' }, sum.Justification || ''));
+    var ul = h('ul', { 'class': 'plain' });
+    arr(sum.Assessment).forEach(function (a) { add(ul, h('li', null, a)); });
+    add(right, ul);
+    add(s, h('div', { 'class': 'hero' }, verdict, right));
+    var k = h('div', { 'class': 'kpis' });
+    RISKS.slice(0, 4).forEach(function (r) {
+      add(k, h('div', { 'class': 'kpi click k-' + lc(r), title: 'Show ' + r + ' findings', onclick: function () { if (findingsApi) findingsApi.only(r); } },
+        h('div', { 'class': 'n' }, String(counts[r] || 0)), h('div', { 'class': 't' }, r + ' findings')));
+    });
+    add(k, h('div', { 'class': 'kpi' }, h('div', { 'class': 'n' }, String(sum.IocMatches || 0)), h('div', { 'class': 't' }, 'IoC matches (' + (sum.HighConfidenceIocs || 0) + ' high conf.)')));
+    add(k, h('div', { 'class': 'kpi' }, h('div', { 'class': 'n' }, String(sum.Correlations || 0)), h('div', { 'class': 't' }, 'Correlated findings')));
+    add(k, h('div', { 'class': 'kpi' }, h('div', { 'class': 'n' }, String(arr(sum.TacticsObserved).length)), h('div', { 'class': 't' }, 'ATT&CK tactics observed')));
+    add(k, h('div', { 'class': 'kpi' }, h('div', { 'class': 'n' }, String(sum.CoverageScore || 0) + '%'), h('div', { 'class': 't' }, 'Collectors fully successful')));
+    add(s, k);
+    var gaps = arr(sum.VisibilityGaps);
+    if (gaps.length) add(s, h('p', { 'class': 'muted', style: 'margin:12px 0 0' }, 'Visibility limits: ' + gaps.join('; ') + '.'));
+    add(main, s);
+  })();
+
+  // ---------------- Response actions ----------------
+  (function () {
+    var s = card('actions', 'Recommended response actions', 'prioritised, de-duplicated');
+    var ol = h('ol', { 'class': 'actions' });
+    arr(D.recommendations).forEach(function (r) {
+      var li = h('li');
+      var cb = h('input', { type: 'checkbox', title: 'Mark as done', onchange: function () { li.className = cb.checked ? 'done' : ''; } });
+      var ids = arr(r.FindingIds);
+      add(li, [h('span', { 'class': 'num' }, String(r.Priority) + '.'), cb,
+        h('div', { 'class': 'txt' }, badge(r.Risk), ' ', r.Action, ids.length ? h('div', { style: 'margin-top:4px' }, ids.slice(0, 12).map(idChip), ids.length > 12 ? h('span', { 'class': 'muted' }, ' +' + (ids.length - 12) + ' more') : null) : null)]);
+      add(ol, li);
+    });
+    add(s, ol);
+    add(main, s);
+  })();
+
+  // ---------------- Key findings ----------------
+  (function () {
+    var s = card('key', 'Key findings', 'highest risk first');
+    var top = threat.filter(function (f) { return RANK[f.Risk] >= 3; }).slice(0, 9);
+    if (!top.length) top = threat.filter(function (f) { return RANK[f.Risk] >= 2; }).slice(0, 6);
+    if (!top.length) { add(s, h('div', { 'class': 'empty-state' }, 'No Moderate or higher threat findings were identified.')); add(main, s); return; }
+    var wrap = h('div', { 'class': 'cards' });
+    top.forEach(function (f) {
+      var reasons = arr(f.Reasons);
+      add(wrap, h('div', { 'class': 'fcard b-' + lc(f.Risk) },
+        h('div', null, badge(f.Risk), ' ', h('span', { 'class': 'chip', onclick: function () { findingsApi.focus(f.Id); } }, f.Id), ' ', h('span', { 'class': 'muted' }, f.Category)),
+        h('h3', null, f.Title),
+        h('div', { 'class': 'meta mono' }, f.Entity || ''),
+        h('div', { 'class': 'meta' }, [f.Time ? 'Time: ' + f.Time : null, f.Source ? ' | Source: ' + f.Source : null, f.Mitre ? ' | ' + f.Mitre : null]),
+        reasons.length ? h('div', { 'class': 'why' }, h('b', null, 'Why flagged: '), reasons.slice(0, 3).join(' ; ')) : null,
+        h('div', { 'class': 'act' }, h('b', null, 'Action: '), f.Recommendation || '')));
+    });
+    add(s, wrap);
+    add(main, s);
+  })();
+
+  // ---------------- ATT&CK matrix ----------------
+  (function () {
+    var s = card('attack', 'MITRE ATT&CK coverage', 'threat findings mapped to tactics and techniques - click a technique to filter');
+    var m = h('div', { 'class': 'matrix' });
+    arr(D.attack).forEach(function (t) {
+      var techs = arr(t.Techniques);
+      var col = h('div', { 'class': 'tcol' + (techs.length ? '' : ' empty') }, h('div', { 'class': 'th' }, t.Tactic, techs.length ? badge(t.MaxRisk) : null));
+      techs.forEach(function (x) {
+        add(col, h('div', { 'class': 'tech r-' + lc(x.MaxRisk), title: arr(x.FindingIds).join(', '), onclick: function () { findingsApi.filterText(x.Id); } },
+          h('b', null, x.Id + '  (' + x.Count + ')'), x.Name));
+      });
+      add(m, col);
+    });
+    add(s, m);
+    add(main, s);
+  })();
+
+  // ---------------- Timeline ----------------
+  (function () {
+    var s = card('timeline', 'Timeline of events', 'time-stamped findings, oldest first');
+    var sel = h('select', null, ['Critical', 'High', 'Moderate', 'Low', 'Info'].map(function (r) { return h('option', { value: r, selected: r === 'Moderate' }, r + ' and above'); }));
+    var list = h('ul', { 'class': 'tl' });
+    function render() {
+      list.textContent = '';
+      var min = RANK[sel.value];
+      var items = arr(D.timeline).filter(function (t) { return RANK[t.Risk] >= min; });
+      if (!items.length) { add(list, h('li', { 'class': 'day' }, h('span', { 'class': 'empty-state' }, 'No time-stamped findings at this level.'))); return; }
+      var day = '';
+      items.forEach(function (t) {
+        var d = String(t.Time).slice(0, 10);
+        if (d !== day) { day = d; add(list, h('li', { 'class': 'day' }, d)); }
+        add(list, h('li', { 'class': 'd-' + lc(t.Risk) }, h('span', { 'class': 'when' }, String(t.Time).slice(11) || String(t.Time)), '  ', badge(t.Risk), ' ', idChip(t.Id), ' ', t.Title,
+          h('div', { 'class': 'muted mono', style: 'font-size:12px' }, (t.Entity || '') + (t.Source ? '  [' + t.Source + ']' : ''))));
+      });
+    }
+    sel.addEventListener('change', render);
+    add(s, h('div', { 'class': 'controls' }, 'Show ', sel));
+    add(s, list);
+    render();
+    add(main, s);
+  })();
+
+  // ---------------- All findings ----------------
+  (function () {
+    var s = card('findings', 'All findings', findings.length + ' total - click a row for evidence');
+    var state = { text: '', risks: { Critical: true, High: true, Moderate: true, Low: true, Info: true }, cat: '', kind: 'Threat', sort: 'Risk', dir: -1, open: {} };
+    var search = h('input', { type: 'search', placeholder: 'Search title, entity, path, MITRE, evidence...' });
+    var cats = {}; findings.forEach(function (f) { cats[f.Category] = 1; });
+    var catSel = h('select', null, h('option', { value: '' }, 'All categories'), Object.keys(cats).sort().map(function (c) { return h('option', { value: c }, c); }));
+    var kindSel = h('select', null, h('option', { value: 'Threat' }, 'Threat findings'), h('option', { value: 'Posture' }, 'Posture / hardening'), h('option', { value: '' }, 'Everything'));
+    var toggles = {};
+    var ctl = h('div', { 'class': 'controls' }, search, catSel, kindSel);
+    RISKS.forEach(function (r) {
+      var t = h('span', { 'class': 'toggle', onclick: function () { state.risks[r] = !state.risks[r]; t.className = 'toggle' + (state.risks[r] ? '' : ' off'); render(); } }, r);
+      toggles[r] = t; add(ctl, t);
+    });
+    var countEl = h('span', { 'class': 'muted' });
+    add(ctl, countEl);
+    var cols = [['Id', 'ID'], ['Risk', 'Risk'], ['Title', 'Finding'], ['Category', 'Category'], ['Entity', 'Entity'], ['Mitre', 'MITRE'], ['Time', 'Time']];
+    var thead = h('tr');
+    cols.forEach(function (c) {
+      add(thead, h('th', { onclick: function () { if (state.sort === c[0]) state.dir = -state.dir; else { state.sort = c[0]; state.dir = c[0] === 'Risk' ? -1 : 1; } render(); } }, c[1]));
+    });
+    var tbody = h('tbody');
+    add(s, ctl);
+    add(s, h('div', { 'class': 'tablewrap' }, h('table', { 'class': 'grid' }, h('thead', null, thead), tbody)));
+    var current = [];
+
+    function haystack(f) {
+      if (!f._hay) {
+        var ev = obj(f.Evidence), parts = [f.Id, f.Title, f.Entity, f.Path, f.Mitre, f.Tactics, f.Source, f.User, f.RemoteIp, f.Category].concat(arr(f.Reasons), arr(f.IoCs));
+        for (var k in ev) parts.push(k + ' ' + ev[k]);
+        f._hay = lc(parts.join(' \n '));
+      }
+      return f._hay;
+    }
+    function detail(f) {
+      var d = h('div', { 'class': 'detail' });
+      var reasons = arr(f.Reasons);
+      if (reasons.length) { add(d, h('h4', null, 'Why it was flagged')); var ul = h('ul', { 'class': 'plain' }); reasons.forEach(function (r) { add(ul, h('li', null, r)); }); add(d, ul); }
+      var ev = obj(f.Evidence), keys = Object.keys(ev);
+      if (keys.length) {
+        add(d, h('h4', null, 'Evidence'));
+        var t = h('table', { 'class': 'kv' });
+        keys.forEach(function (k) {
+          var v = String(ev[k]);
+          var cell = (k === 'VirusTotal' && /^https:\/\/www\.virustotal\.com\//.test(v)) ? h('a', { href: v, target: '_blank', rel: 'noopener noreferrer' }, v) : v;
+          add(t, h('tr', null, h('th', null, k), h('td', null, cell)));
+        });
+        add(d, t);
+      }
+      var iocs = arr(f.IoCs);
+      if (iocs.length) { add(d, h('h4', null, 'Indicators')); add(d, h('div', null, iocs.map(function (i) { return h('span', { 'class': 'chip static mono' }, i); }))); }
+      add(d, [h('h4', null, 'Recommended action'), h('div', null, f.Recommendation || '')]);
+      var rel = arr(f.Related);
+      if (rel.length) add(d, [h('h4', null, 'Related findings'), h('div', null, rel.map(idChip))]);
+      add(d, h('div', { 'class': 'muted', style: 'margin-top:8px;font-size:12px' },
+        'Impact ' + f.Impact + '/10, confidence ' + f.Confidence + '/10 | Source: ' + (f.Source || '-') + (f.Tactics ? ' | Tactics: ' + f.Tactics : '') + (f.User ? ' | User: ' + f.User : '')));
+      return d;
+    }
+    function filtered() {
+      var q = lc(state.text);
+      var out = findings.filter(function (f) {
+        if (state.kind && f.Kind !== state.kind) return false;
+        if (!state.risks[f.Risk]) return false;
+        if (state.cat && f.Category !== state.cat) return false;
+        if (q && haystack(f).indexOf(q) < 0) return false;
+        return true;
+      });
+      out.sort(function (a, b) {
+        var x, y;
+        if (state.sort === 'Risk') { x = RANK[a.Risk] * 1000 + a.Impact * 10 + a.Confidence; y = RANK[b.Risk] * 1000 + b.Impact * 10 + b.Confidence; }
+        else { x = lc(a[state.sort]); y = lc(b[state.sort]); }
+        return x < y ? -state.dir : x > y ? state.dir : 0;
+      });
+      return out;
+    }
+    function render() {
+      current = filtered();
+      tbody.textContent = '';
+      countEl.textContent = current.length + ' shown';
+      if (!current.length) { add(tbody, h('tr', null, h('td', { colspan: '7', 'class': 'empty-state' }, 'No findings match the current filters.'))); return; }
+      current.slice(0, 1500).forEach(function (f) {
+        var tr = h('tr', { 'class': 'row', id: 'row-' + f.Id },
+          h('td', { 'class': 'mono', style: 'white-space:nowrap' }, f.Id), h('td', null, badge(f.Risk)), h('td', null, f.Title), h('td', null, f.Category),
+          h('td', { 'class': 'mono', style: 'max-width:340px' }, f.Entity || ''), h('td', { 'class': 'mono' }, f.Mitre || ''), h('td', { 'class': 'mono', style: 'white-space:nowrap' }, f.Time || ''));
+        var dr = h('tr', { 'class': 'detail', style: state.open[f.Id] ? '' : 'display:none' }, h('td', { colspan: '7' }));
+        if (state.open[f.Id]) add(dr.firstChild, detail(f));
+        tr.addEventListener('click', function () {
+          state.open[f.Id] = !state.open[f.Id];
+          if (state.open[f.Id] && !dr.firstChild.firstChild) add(dr.firstChild, detail(f));
+          dr.style.display = state.open[f.Id] ? '' : 'none';
+        });
+        add(tbody, [tr, dr]);
+      });
+      if (current.length > 1500) add(tbody, h('tr', null, h('td', { colspan: '7', 'class': 'muted' }, 'Showing first 1500 rows - refine the filters or use the CSV/JSON export.')));
+    }
+    var timer = null;
+    search.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(function () { state.text = search.value; render(); }, 150); });
+    catSel.addEventListener('change', function () { state.cat = catSel.value; render(); });
+    kindSel.addEventListener('change', function () { state.kind = kindSel.value; render(); });
+    render();
+    add(main, s);
+
+    function csvCell(v) { v = (v === null || v === undefined) ? '' : String(v); return '"' + v.replace(/"/g, '""') + '"'; }
+    findingsApi = {
+      focus: function (id) {
+        var f = byId[id]; if (!f) return;
+        state.kind = ''; kindSel.value = ''; state.cat = ''; catSel.value = ''; state.text = ''; search.value = '';
+        RISKS.forEach(function (r) { state.risks[r] = true; toggles[r].className = 'toggle'; });
+        state.open[id] = true; render();
+        var row = document.getElementById('row-' + id);
+        if (row) { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.classList.add('flash'); setTimeout(function () { row.classList.remove('flash'); }, 1800); }
+      },
+      only: function (risk) {
+        RISKS.forEach(function (r) { state.risks[r] = (r === risk); toggles[r].className = 'toggle' + (state.risks[r] ? '' : ' off'); });
+        state.kind = 'Threat'; kindSel.value = 'Threat'; render();
+        document.getElementById('findings').scrollIntoView({ behavior: 'smooth' });
+      },
+      filterText: function (t) { state.text = t; search.value = t; state.kind = ''; kindSel.value = ''; render(); document.getElementById('findings').scrollIntoView({ behavior: 'smooth' }); },
+      exportCsv: function () {
+        var head = ['Id', 'Kind', 'Risk', 'Impact', 'Confidence', 'Category', 'Title', 'Entity', 'Path', 'User', 'RemoteIp', 'Time', 'Source', 'Mitre', 'Reasons', 'Evidence', 'Recommendation'];
+        var lines = [head.join(',')];
+        current.forEach(function (f) {
+          var ev = obj(f.Evidence), evs = Object.keys(ev).map(function (k) { return k + '=' + ev[k]; }).join(' | ');
+          lines.push([f.Id, f.Kind, f.Risk, f.Impact, f.Confidence, f.Category, f.Title, f.Entity, f.Path, f.User, f.RemoteIp, f.Time, f.Source, f.Mitre, arr(f.Reasons).join(' | '), evs, f.Recommendation].map(csvCell).join(','));
+        });
+        var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        var a = h('a', { href: URL.createObjectURL(blob), download: 'findings_' + (meta.Host || 'host') + '.csv' });
+        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      }
+    };
+  })();
+
+  // ---------------- IoCs ----------------
+  (function () {
+    var list = arr(D.iocMatches);
+    var s = card('iocs', 'Indicators of compromise', list.length + ' matched');
+    if (!list.length) { add(s, h('div', { 'class': 'empty-state' }, 'No indicator from the IoC base / feed matched on this host.')); add(main, s); return; }
+    var tb = h('tbody');
+    list.slice().sort(function (a, b) { return (b.Confidence * 10 + b.Impact) - (a.Confidence * 10 + a.Impact); }).forEach(function (i) {
+      add(tb, h('tr', null, h('td', null, i.Type), h('td', { 'class': 'mono' }, i.IoC), h('td', null, i.Description), h('td', null, i.Impact + '/' + i.Confidence),
+        h('td', null, i.ThreatIntel || ''), h('td', null, idChip(i.FindingId))));
+    });
+    add(s, h('div', { 'class': 'tablewrap' }, h('table', { 'class': 'grid' }, h('thead', null, h('tr', null, ['Type', 'Indicator', 'Description', 'Impact/Conf', 'Source', 'Finding'].map(function (x) { return h('th', null, x); }))), tb)));
+    add(main, s);
+  })();
+
+  // ---------------- Posture ----------------
+  (function () {
+    var s = card('posture', 'Security posture & telemetry', 'hardening gaps reduce detection and increase attack surface');
+    var groups = {};
+    arr(D.posture).forEach(function (p) { (groups[p.Area] = groups[p.Area] || []).push(p); });
+    Object.keys(groups).forEach(function (g) {
+      add(s, h('h3', { style: 'font-size:14px;margin:12px 0 6px' }, g));
+      var grid = h('div', { 'class': 'pgrid' });
+      groups[g].forEach(function (p) {
+        add(grid, h('div', { 'class': 'pitem' }, h('span', { 'class': 'dot s-' + lc(p.Status) }),
+          h('div', null, h('div', { 'class': 'c' }, p.Check), h('div', { 'class': 'v' }, p.Value), p.Detail ? h('div', { 'class': 'd' }, p.Detail) : null)));
+      });
+      add(s, grid);
+    });
+    if (!Object.keys(groups).length) add(s, h('div', { 'class': 'empty-state' }, 'Posture checks were not collected.'));
+    add(main, s);
+  })();
+
+  // ---------------- Coverage ----------------
+  (function () {
+    var s = card('coverage', 'Scan coverage & host details', 'what was collected, and what could not be');
+    var hg = h('div', { 'class': 'hostgrid' });
+    var hi = obj(D.hostInfo);
+    Object.keys(hi).forEach(function (k) { add(hg, h('div', null, h('b', null, k), String(hi[k]))); });
+    add(hg, h('div', null, h('b', null, 'Scan profile'), (meta.ScanProfile || '') + ', events ' + meta.LookbackHours + 'h, files ' + meta.FileLookbackDays + 'd'));
+    add(hg, h('div', null, h('b', null, 'Analyst'), meta.Analyst || '-'));
+    add(hg, h('div', null, h('b', null, 'Duration'), (meta.DurationSec || 0) + ' s'));
+    var feed = obj(meta.IocFeed);
+    add(hg, h('div', null, h('b', null, 'IoC feed'), feed.Path ? feed.Path + ' (' + feed.IPs + ' IPs, ' + feed.Domains + ' domains, ' + feed.Hashes + ' hashes)' : 'Built-in indicators only'));
+    add(s, hg);
+    var tb = h('tbody');
+    arr(D.coverage).forEach(function (c) {
+      add(tb, h('tr', null, h('td', null, c.Label), h('td', null, h('span', { 'class': 'st st-' + lc(c.Status) }, c.Status)), h('td', null, String(c.Items)), h('td', null, String(c.Findings)),
+        h('td', null, c.DurationSec + ' s'), h('td', { style: 'font-size:12px' }, arr(c.Notes).join(' | '))));
+    });
+    add(s, h('div', { 'class': 'tablewrap' }, h('table', { 'class': 'grid' }, h('thead', null, h('tr', null, ['Collector', 'Status', 'Items', 'Findings', 'Time', 'Notes'].map(function (x) { return h('th', null, x); }))), tb)));
+    add(main, s);
+  })();
+
+  // ---------------- Inventory ----------------
+  (function () {
+    var inv = obj(D.inventory);
+    var names = Object.keys(inv).filter(function (k) { return arr(inv[k]).length; });
+    var s = card('inventory', 'Artifact inventory', 'raw collected artifacts (' + names.length + ' datasets)');
+    if (!names.length) { add(s, h('div', { 'class': 'empty-state' }, 'No inventory data.')); add(main, s); return; }
+    var sel = h('select', null, names.map(function (n) { return h('option', { value: n }, n + ' (' + arr(inv[n]).length + ')'); }));
+    var q = h('input', { type: 'search', placeholder: 'Filter rows...' });
+    var flaggedOnly = h('input', { type: 'checkbox' });
+    var wrap = h('div', { 'class': 'tablewrap' });
+    var limit = 200;
+    var more = h('button', { 'class': 'btn noprint', style: 'margin-top:8px', onclick: function () { limit += 500; render(); } }, 'Show more');
+    function render() {
+      var rows = arr(inv[sel.value]);
+      var term = lc(q.value);
+      if (term) rows = rows.filter(function (r) { return lc(Object.keys(r).map(function (k) { return r[k]; }).join(' ')).indexOf(term) >= 0; });
+      if (flaggedOnly.checked) rows = rows.filter(function (r) { return r.Flag; });
+      var cols = {};
+      rows.slice(0, 50).forEach(function (r) { Object.keys(r).forEach(function (k) { cols[k] = 1; }); });
+      var keys = Object.keys(cols);
+      var t = h('table', { 'class': 'grid' }, h('thead', null, h('tr', null, keys.map(function (k) { return h('th', null, k); }))));
+      var tb = h('tbody');
+      rows.slice(0, limit).forEach(function (r) {
+        var risk = r.Flag ? String(r.Flag).split(':')[0] : '';
+        add(tb, h('tr', null, keys.map(function (k) { return h('td', { 'class': k === 'Flag' && risk ? 'r-' + lc(risk) : null }, r[k] === undefined ? '' : String(r[k])); })));
+      });
+      if (!rows.length) add(tb, h('tr', null, h('td', { colspan: String(keys.length || 1), 'class': 'empty-state' }, 'No rows.')));
+      add(t, tb);
+      wrap.textContent = ''; add(wrap, t);
+      more.style.display = rows.length > limit ? '' : 'none';
+    }
+    sel.addEventListener('change', function () { limit = 200; render(); });
+    q.addEventListener('input', function () { limit = 200; render(); });
+    flaggedOnly.addEventListener('change', render);
+    add(s, h('div', { 'class': 'controls' }, sel, q, h('label', null, flaggedOnly, ' flagged rows only')));
+    add(s, [wrap, more]);
+    render();
+    add(main, s);
+  })();
+
+  // ---------------- Methodology ----------------
+  (function () {
+    var s = card('method', 'Methodology');
+    add(s, h('p', null, 'Every finding is scored on Impact (damage if real, 1-10) and Confidence (likelihood it is malicious, 1-10), mapped to a 5x5 risk matrix (NIST SP 800-30 style). ' +
+      'Findings with confidence below 7 are capped at Moderate. Each additional independent signal on the same artifact adds +1 confidence (max +2). ' +
+      'The correlation engine links findings (process <-> network, persistence <-> flagged binary, ransomware / credential-theft / brute-force patterns) and raises the risk when they corroborate each other.'));
+    var lv = ['Very low', 'Low', 'Moderate', 'High', 'Very high'];
+    var mx = [[1, 1, 1, 1, 2], [1, 1, 1, 2, 3], [1, 1, 2, 3, 3], [1, 2, 3, 3, 4], [2, 2, 3, 4, 4]];
+    var names = { 1: 'Low', 2: 'Moderate', 3: 'High', 4: 'Critical' };
+    var t = h('table', { 'class': 'matrix5' }, h('tr', null, h('th', null, 'Confidence \\ Impact'), lv.map(function (x) { return h('th', null, x); })));
+    for (var r = 4; r >= 0; r--) {
+      add(t, h('tr', null, h('th', null, lv[r]), mx[r].map(function (v) { return h('td', { 'class': 'r-' + lc(names[v]) }, names[v]); })));
+    }
+    add(s, h('div', { style: 'overflow-x:auto' }, t));
+    add(s, h('p', { 'class': 'muted', style: 'margin-top:10px' }, 'The scan is read-only and point-in-time. Absence of findings is not proof of absence of compromise - see the visibility limits and scan coverage sections. ' +
+      'Posture findings describe hardening gaps and do not raise the overall threat risk.'));
+    add(main, s);
+  })();
+
+  add(document.getElementById('footer'), (meta.Tool || '') + ' v' + (meta.Version || '') + '  |  host ' + (meta.Host || '') + '  |  generated ' + (meta.Finished || '') +
+    '  |  collector ' + (meta.Collector || '') + (meta.Elevated ? ' (elevated)' : ' (NOT elevated)'));
+})();
+</script>
+</body>
+</html>
