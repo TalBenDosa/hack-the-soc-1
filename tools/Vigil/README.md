@@ -1,10 +1,11 @@
-# SDEMA IRT : Deep Threat Scan — v9.0
+# Vigil — Host Compromise Assessment (v9.0)
 
-כלי Live-Response לבדיקת חשד לחדירה (Compromise Assessment) בעמדת/שרת Windows בודד.
+**Vigil** ("משמר") הוא כלי Live-Response לבדיקת חשד לחדירה (Compromise Assessment) בעמדת/שרת Windows בודד.
+הוא הדור הבא של `IR_DeepThreatScan_v8.6`. מספור הגרסאות ממשיך מהכלי המקורי.
 הכלי **קורא בלבד**: הוא לא משנה, לא מסגר (quarantine) ולא מוחק שום דבר במחשב.
 
 * **אין צורך ב-Python** ולא בשום Runtime נוסף. הכלי כתוב ב-PowerShell בלבד, ורץ על Windows PowerShell 5.1 (מובנה ב-Windows 10/11 וב-Server 2016 ומעלה) או על PowerShell 7.
-* אפשר להריץ אותו כקובץ `.ps1`, או לארוז ל-EXE עצמאי (כמו המקור) עם `Build-Exe.ps1`.
+* אפשר להריץ אותו כקובץ `.ps1`, או לארוז ל-EXE עצמאי (`Vigil.exe`, כמו המקור) עם `Build-Exe.ps1`.
 
 ---
 
@@ -69,18 +70,20 @@
 ### הדו"ח
 | קובץ | תוכן |
 |---|---|
-| `ThreatScan_<HOST>_<TS>.html` | דו"ח אינטראקטיבי **עצמאי לגמרי** (ללא CDN, עובד ברשת מבודדת), בהיר/כהה, מותאם להדפסה ו-PDF ולמובייל |
+| `Vigil_<HOST>_<TS>.html` | דו"ח אינטראקטיבי **עצמאי לגמרי** (ללא CDN, עובד ברשת מבודדת), כהה כברירת מחדל ובהיר במתג, מותאם להדפסה ו-PDF ולמובייל |
 | `...json` | ייצוא מלא (findings, evidence, inventory). אפשר לרנדר ממנו מחדש עם `-ReportFromJson` |
 | `..._Findings.csv` / `..._IoC.csv` | לייבוא ל-SIEM או ל-Excel |
 | `..._ExecutiveSummary.md` | תקציר מנהלים מוכן להדבקה בכרטיס/טיקט |
 | `ScanLog.txt` | לוג ההרצה (transcript) |
 | `manifest.sha256.txt` | SHA-256 של כל קבצי הפלט (שרשרת משמורת) |
 
-**מבנה ה-HTML:** תקציר מנהלים (רמת סיכון, כותרת הערכה, נימוק, KPI) ← **פעולות תגובה מתועדפות** (עם צ'קבוקס) ← ממצאים מרכזיים (למה סומן ומה לעשות) ← **מטריצת MITRE ATT&CK** ← **ציר זמן** ← טבלת כל הממצאים (חיפוש, סינון לפי חומרה וקטגוריה, מיון, ראיות מלאות, ייצוא CSV) ← IoC ← מצב אבטחה וטלמטריה ← **כיסוי הסריקה** (מה נאסף ומה לא) ← מלאי ארטיפקטים גולמי ← מתודולוגיה.
+**עיצוב הדו"ח:** ממשק בסגנון קונסולת SOC: סרגל ניווט צדדי שמסמן את המקטע הנוכחי, **באנר פסיקה** בצבע רמת הסיכון (שם המחשב, צ'יפים של Case, פרופיל וחלון זמן), **תרשים טבעת** של התפלגות החומרה, **שרשרת תקיפה (Kill-chain)** של 12 טקטיקות ATT&CK צבועות לפי חומרה, **פסי קטגוריות** מוערמים לפי חומרה, ופס חומרה צבעוני בכל שורה בטבלה. לחיצה על כל רכיב מסננת את טבלת הממצאים.
+
+**מבנה ה-HTML:** באנר פסיקה ← סקירת מצב (טבעת, הערכה, KPI, Kill-chain, קטגוריות, מגבלות נראות) ← **פעולות תגובה מתועדפות** (עם צ'קבוקס) ← ממצאים מרכזיים (למה סומן ומה לעשות) ← **מטריצת MITRE ATT&CK** ← **ציר זמן** ← טבלת כל הממצאים (חיפוש, סינון לפי חומרה וקטגוריה, מיון, ראיות מלאות, ייצוא CSV) ← IoC ← מצב אבטחה וטלמטריה ← **כיסוי הסריקה** (מה נאסף ומה לא) ← מלאי ארטיפקטים גולמי ← מתודולוגיה.
 
 כל הנתונים מוצגים דרך `textContent` ומוטמעים כ-JSON מקודד, כך שתוכן מהמחשב הנבדק לא יכול להריץ קוד בדפדפן של האנליסט.
 
-דו"ח לדוגמה (נתונים סינתטיים): [`samples/ThreatScan_SAMPLE.html`](samples/ThreatScan_SAMPLE.html).
+דו"ח לדוגמה (נתונים סינתטיים): [`samples/Vigil_SAMPLE.html`](samples/Vigil_SAMPLE.html).
 
 ---
 
@@ -88,21 +91,21 @@
 
 ```powershell
 # הרצה רגילה (מומלץ: PowerShell כמנהל)
-powershell -ExecutionPolicy Bypass -File .\IR_DeepThreatScan_v9.0.ps1 -CaseId IR-2026-114
+powershell -ExecutionPolicy Bypass -File .\Vigil.ps1 -CaseId IR-2026-114
 
 # סריקה עמוקה עם פיד IoC של הארגון
-.\IR_DeepThreatScan_v9.0.ps1 -ScanProfile Deep -LookbackHours 168 -IocFile .\samples\iocs.example.json
+.\Vigil.ps1 -ScanProfile Deep -LookbackHours 168 -IocFile .\samples\iocs.example.json
 
 # טריאז' מהיר בלי סריקת קבצים
-.\IR_DeepThreatScan_v9.0.ps1 -ScanProfile Quick -SkipFileScan
+.\Vigil.ps1 -ScanProfile Quick -SkipFileScan
 
 # רינדור מחדש של דו"ח מ-JSON (למשל על מחשב האנליסט)
-.\IR_DeepThreatScan_v9.0.ps1 -ReportFromJson .\ThreatScan_PC01_20261018_101500.json
+.\Vigil.ps1 -ReportFromJson .\Vigil_PC01_20261018_101500.json
 ```
 
 | פרמטר | ברירת מחדל | תיאור |
 |---|---|---|
-| `-OutputPath` | `C:\SDEMAAuditReport` | כל הרצה נכתבת לתת-תיקייה `<HOST>_<timestamp>` |
+| `-OutputPath` | `C:\VigilReports` | כל הרצה נכתבת לתת-תיקייה `<HOST>_<timestamp>` |
 | `-ScanProfile` | `Standard` | `Quick` / `Standard` / `Deep`: נפח אירועים, עומק קבצים, hash לכל קובץ |
 | `-LookbackHours` | `72` | חלון הזמן לאירועים |
 | `-FileLookbackDays` | `30` | נבדקים רק קבצים שנוצרו או שונו בחלון הזה |
@@ -115,13 +118,13 @@ powershell -ExecutionPolicy Bypass -File .\IR_DeepThreatScan_v9.0.ps1 -CaseId IR
 ### בניית EXE
 ```powershell
 Install-Module ps2exe -Scope CurrentUser      # פעם אחת
-.\Build-Exe.ps1                               # -> dist\IR_DeepThreatScan_v9.0.exe (x64, דורש Admin)
+.\Build-Exe.ps1                               # -> dist\Vigil.exe (x64, דורש Admin)
 .\Build-Exe.ps1 -SignCertThumbprint <thumb>   # מומלץ: חתימה כדי ש-EDR לא יחסום
 ```
 
 ### בדיקות
 ```powershell
-pwsh -File .\tests\Test-DeepThreatScan.ps1
+pwsh -File .\tests\Test-Vigil.ps1
 ```
 67 בדיקות: חוקי זיהוי (חיוביים, שליליים ו-obfuscation), הגנה מזיהוי-עצמי, מטריצת סיכון, פונקציות עזר, ייבוא פיד IoC, קורלציה, יצירת JSON/HTML/MD/CSV ובדיקת הגנה מ-XSS. הבדיקות רצות גם ב-Linux/macOS עם PowerShell 7.
 

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    SDEMA IRT : Deep Threat Scan v9.0 - live-response compromise assessment for a single Windows host.
+    Vigil - Host Compromise Assessment v9.0 - live-response compromise assessment for a single Windows host.
 
 .DESCRIPTION
     Collects volatile and persistent artifacts (processes, network, persistence, event logs,
@@ -39,15 +39,15 @@
     Re-render the HTML / Markdown reports from a previously saved scan JSON (no scanning).
 
 .EXAMPLE
-    .\IR_DeepThreatScan_v9.0.ps1
+    .\Vigil.ps1
 .EXAMPLE
-    .\IR_DeepThreatScan_v9.0.ps1 -CaseId IR-2026-114 -ScanProfile Deep -IocFile .\iocs.json
+    .\Vigil.ps1 -CaseId IR-2026-114 -ScanProfile Deep -IocFile .\iocs.json
 .EXAMPLE
-    .\IR_DeepThreatScan_v9.0.ps1 -ReportFromJson C:\SDEMAAuditReport\PC01_20261018_101500\ThreatScan.json
+    .\Vigil.ps1 -ReportFromJson C:\VigilReports\PC01_20261018_101500\Vigil_PC01_20261018_101500.json
 #>
 [CmdletBinding()]
 param (
-    [string]$OutputPath = "C:\SDEMAAuditReport",
+    [string]$OutputPath = "C:\VigilReports",
     [ValidateSet('Quick', 'Standard', 'Deep')]
     [string]$ScanProfile = 'Standard',
     [ValidateRange(1, 8760)]
@@ -62,7 +62,7 @@ param (
     [string]$ReportFromJson = ''
 )
 
-# SDEMA-DTS-SELF (marker used to ignore this script's own PowerShell script-block logs)
+# VIGIL-SELF (marker used to ignore this script's own PowerShell script-block logs)
 $ScriptVersion = '9.0'
 if (-not $env:COMPUTERNAME) { $env:COMPUTERNAME = [Environment]::MachineName }
 $ProgressPreference = 'SilentlyContinue'
@@ -833,9 +833,9 @@ function Get-FileHashesForIoc {
 function Initialize-EntropyHelper {
     $script:FastEntropy = $false
     try {
-        if (-not ('SdemaDts.Entropy' -as [type])) {
+        if (-not ('VigilScan.Entropy' -as [type])) {
             Add-Type -ErrorAction Stop -TypeDefinition @'
-namespace SdemaDts {
+namespace VigilScan {
     public static class Entropy {
         public static double Compute(string path, int maxBytes) {
             using (var fs = new System.IO.FileStream(path, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite)) {
@@ -861,7 +861,7 @@ namespace SdemaDts {
 function Get-FileEntropy {
     param([string]$Path)
     try {
-        if ($script:FastEntropy) { return [SdemaDts.Entropy]::Compute($Path, 16MB) }
+        if ($script:FastEntropy) { return [VigilScan.Entropy]::Compute($Path, 16MB) }
         # Fallback (Constrained Language / no compiler): sample the first 512 KB
         $fs = [System.IO.File]::OpenRead($Path)
         try { $len = [int][Math]::Min($fs.Length, 512KB); $buf = New-Object byte[] $len; $null = $fs.Read($buf, 0, $len) } finally { $fs.Dispose() }
@@ -1691,7 +1691,7 @@ function Get-PowerShellLogAnalysis {
     $selfIds = New-Object 'System.Collections.Generic.HashSet[string]'
     foreach ($p in $parsed) {
         $t = [string]$p.Data['ScriptBlockText']
-        if ($p.Event.ProcessId -eq $PID -or $t.Contains('SDEMA-DTS-' + 'SELF') -or $t.Contains('$script:CmdRule' + 'Defs')) { [void]$selfIds.Add([string]$p.Data['ScriptBlockId']) }
+        if ($p.Event.ProcessId -eq $PID -or $t.Contains('VIGIL-' + 'SELF') -or $t.Contains('$script:CmdRule' + 'Defs')) { [void]$selfIds.Add([string]$p.Data['ScriptBlockId']) }
     }
     if ($selfIds.Count -gt 0) { Add-CollectorNote "$($selfIds.Count) script block(s) belonging to this scanner ignored" }
     foreach ($p in $parsed) {
@@ -2784,9 +2784,9 @@ function New-ReportModel {
     foreach ($k in $script:State.Inventory.Keys) { $inventory[$k] = @($script:State.Inventory[$k]) }
 
     [ordered]@{
-        schema   = 'sdema.deepthreatscan/9.0'
+        schema   = 'vigil/9.0'
         metadata = [ordered]@{
-            Tool = 'SDEMA IRT : Deep Threat Scan'; Version = $ScriptVersion; Host = $env:COMPUTERNAME
+            Tool = 'Vigil - Host Compromise Assessment'; Version = $ScriptVersion; Host = $env:COMPUTERNAME
             Fqdn = $script:State.HostInfo['DNS Host Name']; Domain = $script:State.HostInfo['Domain']
             CaseId = $CaseId; Analyst = $Analyst; Collector = "$env:USERDOMAIN\$env:USERNAME"; Elevated = [bool]$script:IsAdmin
             ScanProfile = $ScanProfile; LookbackHours = $LookbackHours; FileLookbackDays = $FileLookbackDays
@@ -2841,7 +2841,7 @@ function ConvertTo-MarkdownSummary {
     $m = $Model.metadata; $s = $Model.summary
     $sb = New-Object System.Text.StringBuilder
     $nl = "`r`n"
-    [void]$sb.Append("# Deep Threat Scan - $($m.Host)$nl$nl")
+    [void]$sb.Append("# Vigil - $($m.Host)$nl$nl")
     [void]$sb.Append("| Field | Value |$nl|---|---|$nl")
     [void]$sb.Append("| Overall risk | **$($s.OverallRisk)** |$nl| Assessment | $($s.Headline) |$nl| Case | $($m.CaseId) |$nl| Analyst | $($m.Analyst) |$nl")
     [void]$sb.Append("| Scan | $($m.Started) - $($m.Finished) ($($m.ScanProfile), look-back $($m.LookbackHours)h, elevated: $($m.Elevated)) |$nl")
@@ -2942,138 +2942,172 @@ $script:HtmlTemplate = @'
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
 <title>__REPORT_TITLE__</title>
 <style>
+/* Vigil report - dark "SOC console" theme by default, light theme via toggle; print is always light. */
 :root{
-  --bg:#f4f6f9;--panel:#ffffff;--panel2:#f8fafc;--ink:#1d2733;--muted:#5d6b7b;--line:#dde3ea;--accent:#1f5fae;
-  --crit:#b3261e;--crit-bg:#fdecea;--high:#c25400;--high-bg:#fff1e5;--mod:#8a6d00;--mod-bg:#fff8db;--low:#2e7d32;--low-bg:#eaf5ea;--info:#607d8b;--info-bg:#eef2f5;
-  --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+  --bg:#0a0f1c;--rail:#0d1424;--panel:#111a2e;--panel2:#16213a;--line:#22304d;--ink:#e6edf7;--muted:#8d9cb8;--accent:#38bdf8;--accent2:#a78bfa;
+  --crit:#ff5d5d;--crit-bg:rgba(255,93,93,.14);--high:#ff9f43;--high-bg:rgba(255,159,67,.14);--mod:#f5c84c;--mod-bg:rgba(245,200,76,.14);
+  --low:#4ade80;--low-bg:rgba(74,222,128,.12);--info:#94a3b8;--info-bg:rgba(148,163,184,.13);
+  --radius:14px;--shadow:0 8px 24px rgba(0,0,0,.25);
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0f141a;--panel:#171e26;--panel2:#1d2630;--ink:#e3e9ef;--muted:#9aa8b6;--line:#2b3641;--accent:#6aa7ef;
-    --crit:#ff8a80;--crit-bg:#3b1715;--high:#ffb26b;--high-bg:#3a2412;--mod:#f2d061;--mod-bg:#352d0f;--low:#81c784;--low-bg:#16301a;--info:#a7bac6;--info-bg:#1f2a33;
-    --shadow:none;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#0f141a;--panel:#171e26;--panel2:#1d2630;--ink:#e3e9ef;--muted:#9aa8b6;--line:#2b3641;--accent:#6aa7ef;
-  --crit:#ff8a80;--crit-bg:#3b1715;--high:#ffb26b;--high-bg:#3a2412;--mod:#f2d061;--mod-bg:#352d0f;--low:#81c784;--low-bg:#16301a;--info:#a7bac6;--info-bg:#1f2a33;
-  --shadow:none;
+:root[data-theme="light"]{
+  --bg:#eef2f8;--rail:#ffffff;--panel:#ffffff;--panel2:#f5f7fb;--line:#dde4ef;--ink:#16202e;--muted:#5b6b82;--accent:#0369a1;--accent2:#6d28d9;
+  --crit:#c42b2b;--crit-bg:#fdeaea;--high:#c25e00;--high-bg:#fff0e1;--mod:#8a6a00;--mod-bg:#fff6d6;--low:#1f7a3a;--low-bg:#e5f6ea;--info:#5b6b82;--info-bg:#edf1f6;
+  --shadow:0 2px 10px rgba(16,24,40,.07);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{background:var(--bg);color:var(--ink);font:14px/1.55 "Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
 a{color:var(--accent)}
-code,.mono{font-family:Consolas,"Cascadia Mono",Menlo,monospace;font-size:12.5px}
-header.top{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
-.top-inner{max-width:1500px;margin:0 auto;padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.brand{font-weight:700;letter-spacing:.2px}
-.brand small{display:block;font-weight:400;color:var(--muted);font-size:12px}
-.spacer{flex:1}
-.btn{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:6px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer}
+code,.mono{font-family:"Cascadia Code",Consolas,Menlo,monospace;font-size:12.5px}
+.shell{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
+aside.rail{position:sticky;top:0;height:100vh;overflow:auto;background:var(--rail);border-right:1px solid var(--line);padding:22px 14px}
+.wordmark{display:flex;align-items:center;gap:10px;margin:0 6px 4px}
+.wordmark .eye{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#0a0f1c;font-weight:900;font-size:15px}
+.wordmark b{font-size:18px;letter-spacing:3px}
+.rail .tag{color:var(--muted);font-size:11.5px;margin:0 6px 22px;letter-spacing:.3px}
+.rail nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;margin:2px 0;border-radius:9px;color:var(--muted);text-decoration:none;font-size:13px;border-left:3px solid transparent}
+.rail nav a:hover{background:var(--panel2);color:var(--ink)}
+.rail nav a.active{background:var(--panel2);color:var(--ink);border-left-color:var(--accent)}
+.rail nav a .n{margin-left:auto;font-size:11px;color:var(--muted)}
+.rail .tools{margin-top:22px;display:grid;gap:8px}
+main{padding:22px 26px 10px;min-width:0}
+.btn{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:9px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer;text-align:left}
 .btn:hover{border-color:var(--accent)}
-.layout{max-width:1500px;margin:0 auto;padding:16px;display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px}
-nav.toc{position:sticky;top:76px;align-self:start;font-size:13px}
-nav.toc a{display:block;padding:5px 10px;border-radius:6px;color:var(--muted);text-decoration:none}
-nav.toc a:hover{background:var(--panel);color:var(--ink)}
-@media (max-width:1000px){.layout{grid-template-columns:minmax(0,1fr)} nav.toc{display:none}}
-section.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:18px;box-shadow:var(--shadow)}
-section.card>h2{margin:0 0 12px;font-size:17px;display:flex;align-items:center;gap:8px}
-section.card>h2 .sub{font-weight:400;color:var(--muted);font-size:13px}
-.hero{display:grid;grid-template-columns:240px minmax(0,1fr);gap:20px}
-@media (max-width:700px){.hero{grid-template-columns:minmax(0,1fr)}}
-.verdict{border-radius:10px;padding:18px;text-align:center;color:#fff;display:flex;flex-direction:column;justify-content:center}
-.verdict .lbl{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.9}
-.verdict .lvl{font-size:34px;font-weight:800;line-height:1.1;margin:6px 0}
-.v-critical{background:#b3261e}.v-high{background:#c25400}.v-moderate{background:#9a7b00}.v-low{background:#2e7d32}.v-info{background:#546e7a}
-.headline{font-size:19px;font-weight:700;margin:0 0 6px}
-.just{color:var(--muted);margin:0 0 10px}
+@media (max-width:980px){.shell{grid-template-columns:minmax(0,1fr)} aside.rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);padding:14px 16px} .rail nav,.rail .tag{display:none} .rail .tools{grid-template-columns:repeat(3,auto);justify-content:start;margin-top:10px} main{padding:16px}}
+/* verdict banner */
+.banner{position:relative;overflow:hidden;border-radius:var(--radius);padding:24px 26px;margin-bottom:18px;border:1px solid var(--line);background:var(--panel);box-shadow:var(--shadow)}
+.banner:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,var(--rc-bg) 0%,transparent 62%);pointer-events:none}
+.banner:after{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--rc)}
+.banner>*{position:relative}
+.banner .eyebrow{font-size:11.5px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)}
+.banner h1{margin:4px 0 10px;font-size:30px;line-height:1.15;word-break:break-word}
+.banner .row{display:flex;gap:18px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.metas{display:flex;flex-wrap:wrap;gap:6px}
+.meta-chip{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:3px 11px;font-size:12px;color:var(--muted)}
+.meta-chip b{color:var(--ink);font-weight:600}
+.riskbox{min-width:210px;text-align:right}
+.riskbox .lbl{font-size:11.5px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)}
+.riskbox .lvl{font-size:44px;font-weight:900;line-height:1;color:var(--rc);text-shadow:0 0 28px var(--rc-bg)}
+.riskbox .sub{font-size:12.5px;color:var(--muted);margin-top:6px}
+.headline{font-size:18px;font-weight:700;margin:16px 0 4px}
+@media (max-width:640px){.banner{padding:20px 18px}.banner .row{flex-direction:column}.riskbox{text-align:left;min-width:0}.riskbox .lvl{font-size:36px}.banner h1{font-size:24px}.cb{grid-template-columns:110px minmax(0,1fr) 28px}}
+.just{color:var(--muted);margin:0}
+/* section cards */
+section.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin-bottom:18px;box-shadow:var(--shadow)}
+section.card>h2{margin:0 0 14px;font-size:13px;letter-spacing:1.8px;text-transform:uppercase;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+section.card>h2:before{content:"";width:8px;height:8px;border-radius:2px;background:var(--accent);display:inline-block;transform:translateY(-1px)}
+section.card>h2 .sub{font-weight:400;color:var(--muted);font-size:12.5px;letter-spacing:0;text-transform:none}
+.overview{display:grid;grid-template-columns:220px minmax(0,1fr) 300px;gap:22px;align-items:start}
+@media (max-width:1250px){.overview{grid-template-columns:200px minmax(0,1fr)} .overview .kgrid{grid-column:1 / -1}}
+@media (max-width:640px){.overview{grid-template-columns:minmax(0,1fr)}}
+.donut{display:grid;justify-items:center;gap:10px}
+.donut svg{width:180px;height:180px}
+.legend{display:grid;grid-template-columns:auto auto;gap:3px 14px;font-size:12.5px}
+.legend span{display:flex;align-items:center;gap:6px;cursor:pointer}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block}
 ul.plain{margin:0;padding-left:18px}
-ul.plain li{margin:3px 0}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:16px}
-.kpi{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel2);cursor:default}
-.kpi.click{cursor:pointer}.kpi.click:hover{border-color:var(--accent)}
-.kpi .n{font-size:24px;font-weight:800}
-.kpi .t{font-size:12px;color:var(--muted)}
-.kpi.k-critical .n{color:var(--crit)}.kpi.k-high .n{color:var(--high)}.kpi.k-moderate .n{color:var(--mod)}.kpi.k-low .n{color:var(--low)}
-.badge{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700;white-space:nowrap}
+ul.plain li{margin:4px 0}
+.kgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--panel2)}
+.kpi .n{font-size:26px;font-weight:800;line-height:1.1}
+.kpi .t{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.killchain{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:4px;margin-top:10px}
+.kc{padding:9px 10px 8px;background:var(--panel2);border:1px solid var(--line);font-size:11.5px;line-height:1.25;color:var(--muted);clip-path:polygon(0 0,calc(100% - 9px) 0,100% 50%,calc(100% - 9px) 100%,0 100%,9px 50%);padding-left:16px;cursor:pointer}
+.kc:first-child{clip-path:polygon(0 0,calc(100% - 9px) 0,100% 50%,calc(100% - 9px) 100%,0 100%);padding-left:10px}
+.kc b{display:block;font-size:15px;color:var(--ink)}
+.kc.on-critical{background:var(--crit-bg);border-color:var(--crit);color:var(--crit)}.kc.on-high{background:var(--high-bg);color:var(--high)}.kc.on-moderate{background:var(--mod-bg);color:var(--mod)}.kc.on-low{background:var(--low-bg);color:var(--low)}
+.catbars{margin-top:20px;display:grid;gap:7px}
+.cb{display:grid;grid-template-columns:150px minmax(0,1fr) 34px;gap:10px;align-items:center;font-size:12.5px;cursor:pointer}
+.cb .bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--panel2)}
+.cb .bar i{display:block;height:100%}
+.cb .num{text-align:right;color:var(--muted)}
+.gaps{margin-top:16px;padding:10px 14px;border:1px dashed var(--mod);border-radius:10px;color:var(--mod);background:var(--mod-bg);font-size:13px}
+/* shared components */
+.badge{display:inline-block;border-radius:6px;padding:1px 8px;font-size:11.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
 .r-critical{background:var(--crit-bg);color:var(--crit)}.r-high{background:var(--high-bg);color:var(--high)}.r-moderate{background:var(--mod-bg);color:var(--mod)}.r-low{background:var(--low-bg);color:var(--low)}.r-info{background:var(--info-bg);color:var(--info)}
-.chip{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:0 6px;margin:1px 3px 1px 0;font-size:12px;background:var(--panel2);cursor:pointer;color:var(--ink)}
-.chip:hover{border-color:var(--accent)}
+.chip{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:0 7px;margin:1px 3px 1px 0;font-size:12px;background:var(--panel2);cursor:pointer;color:var(--ink);font-family:"Cascadia Code",Consolas,Menlo,monospace}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
 .chip.static{cursor:default}
-ol.actions{margin:0;padding-left:0;list-style:none;counter-reset:a}
-ol.actions li{display:grid;grid-template-columns:28px 26px minmax(0,1fr);gap:8px;align-items:start;padding:9px 0;border-bottom:1px solid var(--line)}
-ol.actions li:last-child{border-bottom:none}
-ol.actions .num{font-weight:800;color:var(--muted);text-align:right}
-ol.actions li.done .txt{text-decoration:line-through;color:var(--muted)}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(330px,100%),1fr));gap:12px}
-.fcard{border:1px solid var(--line);border-left:5px solid var(--info);border-radius:8px;padding:12px 14px;background:var(--panel2)}
-.fcard.b-critical{border-left-color:var(--crit)}.fcard.b-high{border-left-color:var(--high)}.fcard.b-moderate{border-left-color:var(--mod)}.fcard.b-low{border-left-color:var(--low)}
-.fcard h3{margin:4px 0 6px;font-size:14.5px}
+ol.actions{margin:0;padding:0;list-style:none}
+ol.actions li{display:grid;grid-template-columns:34px 22px minmax(0,1fr);gap:10px;align-items:start;padding:11px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--panel2)}
+ol.actions .num{font-weight:900;font-size:16px;color:var(--accent);text-align:center}
+ol.actions li.done{opacity:.5}
+ol.actions li.done .txt{text-decoration:line-through}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:12px}
+.fcard{border:1px solid var(--line);border-top:3px solid var(--info);border-radius:12px;padding:14px 16px;background:var(--panel2)}
+.fcard.b-critical{border-top-color:var(--crit)}.fcard.b-high{border-top-color:var(--high)}.fcard.b-moderate{border-top-color:var(--mod)}.fcard.b-low{border-top-color:var(--low)}
+.fcard h3{margin:8px 0 6px;font-size:15px}
 .fcard .meta{color:var(--muted);font-size:12px;word-break:break-all}
-.fcard .why{margin:8px 0 6px;font-size:13px}
-.fcard .act{font-size:12.5px;border-top:1px dashed var(--line);padding-top:6px;margin-top:6px}
+.fcard .why{margin:10px 0 6px;font-size:13px}
+.fcard .act{font-size:12.5px;border-top:1px solid var(--line);padding-top:8px;margin-top:8px;color:var(--ink)}
+.fcard .act b{color:var(--accent)}
 .matrix{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
-.tcol{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel2)}
-.tcol .th{padding:7px 9px;font-weight:700;font-size:12.5px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
-.tcol.empty{opacity:.55}
-.tech{margin:6px;padding:6px 8px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid transparent}
+.tcol{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel2)}
+.tcol .th{padding:8px 10px;font-weight:700;font-size:12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+.tcol.empty{opacity:.4}
+.tech{margin:6px;padding:7px 9px;border-radius:8px;font-size:12px;cursor:pointer;border:1px solid transparent}
 .tech:hover{border-color:var(--accent)}
-.tech b{display:block;font-size:11.5px}
+.tech b{display:block;font-size:11.5px;font-family:"Cascadia Code",Consolas,Menlo,monospace}
 .tech.r-critical,.tech.r-high,.tech.r-moderate,.tech.r-low,.tech.r-info{font-weight:400}
-.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
-.controls input[type=search],.controls select{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:6px;padding:6px 9px;font:inherit;font-size:13px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.controls input[type=search],.controls select{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:9px;padding:7px 10px;font:inherit;font-size:13px}
 .controls input[type=search]{min-width:min(240px,100%);flex:1}
-.toggle{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer;user-select:none;background:var(--panel2)}
-.toggle.off{opacity:.4;text-decoration:line-through}
-.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+.toggle{border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:12px;cursor:pointer;user-select:none;background:var(--panel2)}
+.toggle.off{opacity:.35;text-decoration:line-through}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
 table.grid{border-collapse:collapse;width:100%;font-size:13px}
-table.grid th{position:sticky;top:0;background:var(--panel2);text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
-table.grid td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top;word-break:break-word}
+table.grid th{background:var(--panel2);text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+table.grid td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;word-break:break-word}
 table.grid tr.row{cursor:pointer}
+table.grid tr.row td:first-child{box-shadow:inset 3px 0 0 var(--sev,transparent)}
 table.grid tr.row:hover td{background:var(--panel2)}
-table.grid tr.detail td{background:var(--panel2);padding:12px 16px}
+table.grid tr.detail td{background:var(--bg);padding:14px 18px}
 table.kv{border-collapse:collapse;width:100%;font-size:12.5px}
-table.kv th{width:170px;text-align:left;color:var(--muted);font-weight:600;padding:4px 8px;vertical-align:top}
-table.kv td{padding:4px 8px;word-break:break-all;white-space:pre-wrap;font-family:Consolas,"Cascadia Mono",Menlo,monospace}
-.detail h4{margin:10px 0 4px;font-size:12.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
-.tl{list-style:none;margin:0;padding:0;border-left:2px solid var(--line);margin-left:8px}
-.tl li{position:relative;padding:4px 0 8px 16px}
-.tl li:before{content:"";position:absolute;left:-7px;top:9px;width:12px;height:12px;border-radius:50%;background:var(--info)}
+table.kv th{width:170px;text-align:left;color:var(--muted);font-weight:600;padding:5px 8px;vertical-align:top}
+table.kv td{padding:5px 8px;word-break:break-all;white-space:pre-wrap;font-family:"Cascadia Code",Consolas,Menlo,monospace;border-bottom:1px dashed var(--line)}
+.detail h4{margin:12px 0 5px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--accent)}
+.tl{list-style:none;margin:0 0 0 8px;padding:0;border-left:2px solid var(--line)}
+.tl li{position:relative;padding:5px 0 9px 18px}
+.tl li:before{content:"";position:absolute;left:-7px;top:10px;width:12px;height:12px;border-radius:50%;background:var(--info);box-shadow:0 0 0 3px var(--panel)}
 .tl li.d-critical:before{background:var(--crit)}.tl li.d-high:before{background:var(--high)}.tl li.d-moderate:before{background:var(--mod)}.tl li.d-low:before{background:var(--low)}
-.tl .when{font-family:Consolas,Menlo,monospace;font-size:12px;color:var(--muted)}
-.tl .day{font-weight:700;margin:10px 0 4px -8px;padding-left:0;list-style:none}
+.tl .when{font-family:"Cascadia Code",Consolas,Menlo,monospace;font-size:12px;color:var(--muted)}
+.tl .day{font-weight:800;margin:12px 0 4px -10px;padding:0;color:var(--accent);font-size:12px;letter-spacing:1px}
 .tl .day:before{display:none}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:10px}
-.pitem{display:grid;grid-template-columns:14px minmax(0,1fr);gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.pitem{display:grid;grid-template-columns:14px minmax(0,1fr);gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
 .dot{width:10px;height:10px;border-radius:50%;margin-top:5px}
 .s-good{background:var(--low)}.s-warning{background:var(--mod)}.s-bad{background:var(--crit)}.s-info{background:var(--info)}
 .pitem .c{font-weight:600}.pitem .v{font-size:12.5px}.pitem .d{font-size:12px;color:var(--muted)}
 .hostgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-bottom:14px}
-.hostgrid div{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:13px;word-break:break-word}
-.hostgrid b{display:block;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
-.st{font-weight:700;font-size:12px}.st-ok{color:var(--low)}.st-partial{color:var(--mod)}.st-failed{color:var(--crit)}.st-skipped{color:var(--info)}
+.hostgrid div{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13px;word-break:break-word}
+.hostgrid b{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.st{font-weight:800;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px}.st-ok{color:var(--low)}.st-partial{color:var(--mod)}.st-failed{color:var(--crit)}.st-skipped{color:var(--info)}
 .muted{color:var(--muted)}
 .empty-state{color:var(--muted);font-style:italic;padding:6px 0}
 table.matrix5{border-collapse:collapse;font-size:12px;margin-top:8px}
-table.matrix5 td,table.matrix5 th{border:1px solid var(--line);padding:6px 10px;text-align:center}
-footer{max-width:1500px;margin:0 auto;padding:6px 16px 30px;color:var(--muted);font-size:12px}
-.flash{outline:3px solid var(--accent);outline-offset:-3px}
+table.matrix5 td,table.matrix5 th{border:1px solid var(--line);padding:7px 12px;text-align:center}
+footer{padding:4px 26px 30px;color:var(--muted);font-size:12px}
+.flash{outline:2px solid var(--accent);outline-offset:-2px}
 @media print{
-  header.top,nav.toc,.controls,.noprint,#inventory{display:none!important}
-  .layout{display:block;padding:0}
-  section.card{break-inside:avoid-page;box-shadow:none}
-  body{background:#fff}
+  :root{--bg:#fff;--rail:#fff;--panel:#fff;--panel2:#f6f7f9;--line:#d8dee8;--ink:#111;--muted:#555;--accent:#0369a1;--crit:#c42b2b;--crit-bg:#fdeaea;--high:#c25e00;--high-bg:#fff0e1;--mod:#8a6a00;--mod-bg:#fff6d6;--low:#1f7a3a;--low-bg:#e5f6ea;--shadow:none}
+  aside.rail,.controls,.noprint,#inventory{display:none!important}
+  .shell{display:block} main{padding:0}
+  section.card,.banner{break-inside:avoid-page}
 }
 </style>
 </head>
 <body>
 <script type="application/json" id="report-data">/*__REPORT_DATA__*/</script>
-<header class="top"><div class="top-inner" id="topbar"></div></header>
-<div class="layout">
-  <nav class="toc" id="toc"></nav>
-  <main id="main"></main>
+<div class="shell">
+  <aside class="rail">
+    <div class="wordmark"><span class="eye">V</span><b>VIGIL</b></div>
+    <div class="tag">Host Compromise Assessment</div>
+    <nav id="toc"></nav>
+    <div class="tools" id="tools"></div>
+  </aside>
+  <div style="min-width:0"><main id="main"></main><footer id="footer"></footer></div>
 </div>
-<footer id="footer"></footer>
 <script>
 (function () {
   'use strict';
@@ -3090,11 +3124,15 @@ footer{max-width:1500px;margin:0 auto;padding:6px 16px 30px;color:var(--muted);f
     return [x];
   }
   function obj(x) { return (x && typeof x === 'object' && !Array.isArray(x)) ? x : {}; }
-  function add(el, c) {
-    if (c === null || c === undefined || c === false) return;
-    if (Array.isArray(c)) { for (var i = 0; i < c.length; i++) add(el, c[i]); return; }
-    if (typeof c === 'string' || typeof c === 'number' || typeof c === 'boolean') { el.appendChild(document.createTextNode(String(c))); return; }
-    el.appendChild(c);
+  function add(el) {
+    // add(parent, child1, child2, ...) - children may be nodes, text or (nested) arrays
+    for (var a = 1; a < arguments.length; a++) {
+      var c = arguments[a];
+      if (c === null || c === undefined || c === false) continue;
+      if (Array.isArray(c)) { for (var i = 0; i < c.length; i++) add(el, c[i]); continue; }
+      if (typeof c === 'string' || typeof c === 'number' || typeof c === 'boolean') { el.appendChild(document.createTextNode(String(c))); continue; }
+      el.appendChild(c);
+    }
   }
   function h(tag, attrs) {
     var el = document.createElement(tag);
@@ -3131,53 +3169,120 @@ footer{max-width:1500px;margin:0 auto;padding:6px 16px 30px;color:var(--muted);f
     return h('span', { 'class': 'chip', title: byId[id] ? byId[id].Title : id, onclick: function () { if (findingsApi) findingsApi.focus(id); } }, id);
   }
 
-  // ---------------- Top bar ----------------
+  // ---------------- Rail: tools ----------------
+  var SEVVAR = { Critical: 'crit', High: 'high', Moderate: 'mod', Low: 'low', Info: 'info' };
   (function () {
-    var bar = document.getElementById('topbar');
-    add(bar, h('div', { 'class': 'brand' }, (meta.Tool || 'Deep Threat Scan') + ' v' + (meta.Version || ''),
-      h('small', null, 'Host ' + (meta.Host || '?') + (meta.CaseId ? '  |  Case ' + meta.CaseId : '') + '  |  ' + (meta.Finished || ''))));
-    add(bar, badge(sum.OverallRisk));
-    add(bar, h('span', { 'class': 'spacer' }));
-    add(bar, h('button', { 'class': 'btn', onclick: function () { window.print(); } }, 'Print / PDF'));
-    add(bar, h('button', { 'class': 'btn', onclick: function () { if (findingsApi) findingsApi.exportCsv(); } }, 'Export findings CSV'));
-    add(bar, h('button', { 'class': 'btn', onclick: function () {
+    var tools = document.getElementById('tools');
+    add(tools, h('button', { 'class': 'btn', onclick: function () { window.print(); } }, 'Print / PDF'));
+    add(tools, h('button', { 'class': 'btn', onclick: function () { if (findingsApi) findingsApi.exportCsv(); } }, 'Export CSV'));
+    add(tools, h('button', { 'class': 'btn', onclick: function () {
       var root = document.documentElement;
-      var cur = root.getAttribute('data-theme');
-      var dark = cur ? cur === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.setAttribute('data-theme', dark ? 'light' : 'dark');
-    } }, 'Theme'));
+      if (root.getAttribute('data-theme') === 'light') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', 'light');
+    } }, 'Light / dark'));
   })();
 
-  // ---------------- TOC ----------------
-  var sections = [['summary', 'Executive summary'], ['actions', 'Response actions'], ['key', 'Key findings'], ['attack', 'MITRE ATT&CK'],
+  // ---------------- Rail: navigation ----------------
+  var sections = [['summary', 'Overview'], ['actions', 'Response actions'], ['key', 'Key findings'], ['attack', 'MITRE ATT&CK'],
     ['timeline', 'Timeline'], ['findings', 'All findings'], ['iocs', 'Indicators (IoC)'], ['posture', 'Security posture'],
     ['coverage', 'Scan coverage'], ['inventory', 'Artifact inventory'], ['method', 'Methodology']];
+  var navCounts = { findings: findings.length, iocs: arr(D.iocMatches).length, actions: arr(D.recommendations).length };
   var toc = document.getElementById('toc');
-  sections.forEach(function (s) { add(toc, h('a', { href: '#' + s[0] }, s[1])); });
+  sections.forEach(function (s) {
+    add(toc, h('a', { href: '#' + s[0], 'data-sec': s[0] }, s[1], navCounts[s[0]] !== undefined ? h('span', { 'class': 'n' }, String(navCounts[s[0]])) : null));
+  });
+  function setupScrollSpy() {
+    if (!('IntersectionObserver' in window)) return;
+    var links = {};
+    Array.prototype.forEach.call(toc.querySelectorAll('a'), function (a) { links[a.getAttribute('data-sec')] = a; });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        Object.keys(links).forEach(function (k) { links[k].className = k === e.target.id ? 'active' : ''; });
+      });
+    }, { rootMargin: '-15% 0px -75% 0px' });
+    sections.forEach(function (s) { var el = document.getElementById(s[0]); if (el) io.observe(el); });
+  }
 
-  // ---------------- Executive summary ----------------
+  // ---------------- Verdict banner + overview ----------------
   (function () {
-    var s = card('summary', 'Executive summary', meta.Started ? 'scan ' + meta.Started + ' - ' + meta.Finished : '');
     var risk = sum.OverallRisk || 'Low';
-    var verdict = h('div', { 'class': 'verdict v-' + lc(risk) }, h('div', { 'class': 'lbl' }, 'Overall risk'), h('div', { 'class': 'lvl' }, risk),
-      h('div', { 'class': 'lbl' }, (counts.Critical || 0) + ' critical  /  ' + (counts.High || 0) + ' high'));
-    var right = h('div', null, h('p', { 'class': 'headline' }, sum.Headline || ''), h('p', { 'class': 'just' }, sum.Justification || ''));
+    var v = SEVVAR[risk] || 'info';
+    var chips = [['Case', meta.CaseId || '-'], ['Analyst', meta.Analyst || '-'], ['Profile', meta.ScanProfile || '-'],
+      ['Events', (meta.LookbackHours || '?') + 'h'], ['Files', (meta.FileLookbackDays || '?') + 'd'], ['Elevated', meta.Elevated ? 'yes' : 'NO'],
+      ['Scanned', meta.Finished || '-'], ['Duration', (meta.DurationSec || 0) + 's']];
+    var banner = h('div', { 'class': 'banner', id: 'summary', style: '--rc:var(--' + v + ');--rc-bg:var(--' + v + '-bg)' },
+      h('div', { 'class': 'row' },
+        h('div', { style: 'min-width:0;flex:1' },
+          h('div', { 'class': 'eyebrow' }, 'Host compromise assessment'),
+          h('h1', null, meta.Host || 'Unknown host'),
+          h('div', { 'class': 'metas' }, chips.filter(function (c) { return c[1] !== '-'; }).map(function (c) { return h('span', { 'class': 'meta-chip' }, c[0] + ' ', h('b', null, String(c[1]))); }))),
+        h('div', { 'class': 'riskbox' }, h('div', { 'class': 'lbl' }, 'Overall risk'), h('div', { 'class': 'lvl' }, risk),
+          h('div', { 'class': 'sub' }, (counts.Critical || 0) + ' critical / ' + (counts.High || 0) + ' high / ' + (counts.Moderate || 0) + ' moderate'))),
+      h('div', { 'class': 'headline' }, sum.Headline || ''),
+      h('p', { 'class': 'just' }, sum.Justification || ''));
+    add(main, banner);
+
+    var s = card('overview', 'Situation overview', 'severity distribution, assessment and kill chain');
+    // donut
+    var NS = 'http://www.w3.org/2000/svg';
+    function svg(tag, attrs) { var el = document.createElementNS(NS, tag); for (var k in attrs) el.setAttribute(k, attrs[k]); return el; }
+    var total = 0; RISKS.slice(0, 4).forEach(function (r) { total += (counts[r] || 0); });
+    var chart = svg('svg', { viewBox: '0 0 180 180', role: 'img', 'aria-label': 'Findings by severity' });
+    var R = 70, C = 2 * Math.PI * R, off = 0;
+    chart.appendChild(svg('circle', { cx: 90, cy: 90, r: R, fill: 'none', stroke: 'var(--panel2)', 'stroke-width': 22 }));
+    RISKS.slice(0, 4).forEach(function (r) {
+      var n = counts[r] || 0; if (!n || !total) return;
+      var len = C * n / total;
+      var seg = svg('circle', { cx: 90, cy: 90, r: R, fill: 'none', stroke: 'var(--' + SEVVAR[r] + ')', 'stroke-width': 22,
+        'stroke-dasharray': Math.max(0, len - 2) + ' ' + (C - Math.max(0, len - 2)), 'stroke-dashoffset': -off, transform: 'rotate(-90 90 90)' });
+      var tt = svg('title', {}); tt.textContent = r + ': ' + n; seg.appendChild(tt);
+      chart.appendChild(seg); off += len;
+    });
+    var t1 = svg('text', { x: 90, y: 88, 'text-anchor': 'middle', fill: 'var(--ink)', 'font-size': 34, 'font-weight': 800 }); t1.textContent = String(total);
+    var t2 = svg('text', { x: 90, y: 110, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11, 'letter-spacing': 1.5 }); t2.textContent = 'FINDINGS';
+    chart.appendChild(t1); chart.appendChild(t2);
+    var legend = h('div', { 'class': 'legend' }, RISKS.slice(0, 4).map(function (r) {
+      return h('span', { title: 'Show ' + r + ' findings', onclick: function () { if (findingsApi) findingsApi.only(r); } }, h('i', { 'class': 'sw', style: 'background:var(--' + SEVVAR[r] + ')' }), r + ' ' + (counts[r] || 0));
+    }));
     var ul = h('ul', { 'class': 'plain' });
     arr(sum.Assessment).forEach(function (a) { add(ul, h('li', null, a)); });
-    add(right, ul);
-    add(s, h('div', { 'class': 'hero' }, verdict, right));
-    var k = h('div', { 'class': 'kpis' });
-    RISKS.slice(0, 4).forEach(function (r) {
-      add(k, h('div', { 'class': 'kpi click k-' + lc(r), title: 'Show ' + r + ' findings', onclick: function () { if (findingsApi) findingsApi.only(r); } },
-        h('div', { 'class': 'n' }, String(counts[r] || 0)), h('div', { 'class': 't' }, r + ' findings')));
+    if (!arr(sum.Assessment).length) add(ul, h('li', null, 'No assessment statements.'));
+    function kpi(n, t, color) { return h('div', { 'class': 'kpi' }, h('div', { 'class': 'n', style: color ? 'color:' + color : null }, String(n)), h('div', { 'class': 't' }, t)); }
+    var kg = h('div', { 'class': 'kgrid' },
+      kpi(sum.IocMatches || 0, 'IoC matches', (sum.IocMatches ? 'var(--crit)' : null)),
+      kpi(sum.Correlations || 0, 'Correlations', (sum.Correlations ? 'var(--high)' : null)),
+      kpi(arr(sum.TacticsObserved).length, 'ATT&CK tactics'),
+      kpi((sum.CoverageScore || 0) + '%', 'Collector coverage', (sum.CoverageScore < 50 ? 'var(--mod)' : 'var(--low)')),
+      kpi(sum.PostureFindings || 0, 'Posture gaps'),
+      kpi(sum.HighConfidenceIocs || 0, 'High-conf. IoCs'));
+    add(s, h('div', { 'class': 'overview' }, h('div', { 'class': 'donut' }, chart, legend), h('div', null, h('div', { 'class': 'muted', style: 'font-size:11px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px' }, 'Assessment'), ul), kg));
+
+    // kill chain
+    var kc = h('div', { 'class': 'killchain' });
+    arr(D.attack).forEach(function (t) {
+      var techs = arr(t.Techniques), n = 0;
+      techs.forEach(function (x) { n += x.Count || 0; });
+      add(kc, h('div', { 'class': 'kc' + (techs.length ? ' on-' + lc(t.MaxRisk) : ''), title: techs.map(function (x) { return x.Id + ' ' + x.Name; }).join('\n') || 'no findings',
+        onclick: function () { if (techs.length && findingsApi) findingsApi.filterText(t.Tactic); } }, h('b', null, techs.length ? String(n) : '-'), t.Tactic));
     });
-    add(k, h('div', { 'class': 'kpi' }, h('div', { 'class': 'n' }, String(sum.IocMatches || 0)), h('div', { 'class': 't' }, 'IoC matches (' + (sum.HighConfidenceIocs || 0) + ' high conf.)')));
-    add(k, h('div', { 'class': 'kpi' }, h('div', { 'class': 'n' }, String(sum.Correlations || 0)), h('div', { 'class': 't' }, 'Correlated findings')));
-    add(k, h('div', { 'class': 'kpi' }, h('div', { 'class': 'n' }, String(arr(sum.TacticsObserved).length)), h('div', { 'class': 't' }, 'ATT&CK tactics observed')));
-    add(k, h('div', { 'class': 'kpi' }, h('div', { 'class': 'n' }, String(sum.CoverageScore || 0) + '%'), h('div', { 'class': 't' }, 'Collectors fully successful')));
-    add(s, k);
+    add(s, h('div', { 'class': 'muted', style: 'font-size:11px;letter-spacing:1.5px;text-transform:uppercase;margin-top:22px' }, 'Attack kill chain (threat findings per tactic)'), kc);
+
+    // categories
+    var cats = {};
+    threat.forEach(function (f) { var c = cats[f.Category] = cats[f.Category] || { Critical: 0, High: 0, Moderate: 0, Low: 0, Info: 0, n: 0 }; c[f.Risk]++; c.n++; });
+    var names = Object.keys(cats).sort(function (a, b) { var x = cats[a], y = cats[b]; return (y.Critical * 1e6 + y.High * 1e4 + y.Moderate * 100 + y.n) - (x.Critical * 1e6 + x.High * 1e4 + x.Moderate * 100 + x.n); });
+    var max = 1; names.forEach(function (c) { if (cats[c].n > max) max = cats[c].n; });
+    if (names.length) {
+      var cb = h('div', { 'class': 'catbars' });
+      names.forEach(function (c) {
+        var bar = h('div', { 'class': 'bar' });
+        RISKS.forEach(function (r) { if (cats[c][r]) add(bar, h('i', { style: 'width:' + (100 * cats[c][r] / max) + '%;background:var(--' + SEVVAR[r] + ')', title: r + ': ' + cats[c][r] })); });
+        add(cb, h('div', { 'class': 'cb', title: 'Filter findings by ' + c, onclick: function () { if (findingsApi) findingsApi.category(c); } }, h('span', null, c), bar, h('span', { 'class': 'num' }, String(cats[c].n))));
+      });
+      add(s, h('div', { 'class': 'muted', style: 'font-size:11px;letter-spacing:1.5px;text-transform:uppercase;margin-top:22px' }, 'Findings by category'), cb);
+    }
     var gaps = arr(sum.VisibilityGaps);
-    if (gaps.length) add(s, h('p', { 'class': 'muted', style: 'margin:12px 0 0' }, 'Visibility limits: ' + gaps.join('; ') + '.'));
+    if (gaps.length) add(s, h('div', { 'class': 'gaps' }, h('b', null, 'Visibility limits: '), gaps.join('; ') + '.'));
     add(main, s);
   })();
 
@@ -3341,7 +3446,7 @@ footer{max-width:1500px;margin:0 auto;padding:6px 16px 30px;color:var(--muted);f
       countEl.textContent = current.length + ' shown';
       if (!current.length) { add(tbody, h('tr', null, h('td', { colspan: '7', 'class': 'empty-state' }, 'No findings match the current filters.'))); return; }
       current.slice(0, 1500).forEach(function (f) {
-        var tr = h('tr', { 'class': 'row', id: 'row-' + f.Id },
+        var tr = h('tr', { 'class': 'row', id: 'row-' + f.Id, style: '--sev:var(--' + (SEVVAR[f.Risk] || 'info') + ')' },
           h('td', { 'class': 'mono', style: 'white-space:nowrap' }, f.Id), h('td', null, badge(f.Risk)), h('td', null, f.Title), h('td', null, f.Category),
           h('td', { 'class': 'mono', style: 'max-width:340px' }, f.Entity || ''), h('td', { 'class': 'mono' }, f.Mitre || ''), h('td', { 'class': 'mono', style: 'white-space:nowrap' }, f.Time || ''));
         var dr = h('tr', { 'class': 'detail', style: state.open[f.Id] ? '' : 'display:none' }, h('td', { colspan: '7' }));
@@ -3377,6 +3482,7 @@ footer{max-width:1500px;margin:0 auto;padding:6px 16px 30px;color:var(--muted);f
         state.kind = 'Threat'; kindSel.value = 'Threat'; render();
         document.getElementById('findings').scrollIntoView({ behavior: 'smooth' });
       },
+      category: function (c) { state.cat = c; catSel.value = c; state.kind = 'Threat'; kindSel.value = 'Threat'; RISKS.forEach(function (r) { state.risks[r] = true; toggles[r].className = 'toggle'; }); render(); document.getElementById('findings').scrollIntoView({ behavior: 'smooth' }); },
       filterText: function (t) { state.text = t; search.value = t; state.kind = ''; kindSel.value = ''; render(); document.getElementById('findings').scrollIntoView({ behavior: 'smooth' }); },
       exportCsv: function () {
         var head = ['Id', 'Kind', 'Risk', 'Impact', 'Confidence', 'Category', 'Title', 'Entity', 'Path', 'User', 'RemoteIp', 'Time', 'Source', 'Mitre', 'Reasons', 'Evidence', 'Recommendation'];
@@ -3504,6 +3610,7 @@ footer{max-width:1500px;margin:0 auto;padding:6px 16px 30px;color:var(--muted);f
     add(main, s);
   })();
 
+  setupScrollSpy();
   add(document.getElementById('footer'), (meta.Tool || '') + ' v' + (meta.Version || '') + '  |  host ' + (meta.Host || '') + '  |  generated ' + (meta.Finished || '') +
     '  |  collector ' + (meta.Collector || '') + (meta.Elevated ? ' (elevated)' : ' (NOT elevated)'));
 })();
@@ -3546,22 +3653,22 @@ function Invoke-ReportOnly {
     $dir = Split-Path -Parent (Resolve-Path -LiteralPath $JsonPath).Path
     $base = [System.IO.Path]::GetFileNameWithoutExtension($JsonPath)
     $html = Join-Path $dir "$base.html"
-    Write-HtmlReport -Json $json -Path $html -Title ("Deep Threat Scan - {0} - {1}" -f $model.metadata.Host, $model.summary.OverallRisk)
+    Write-HtmlReport -Json $json -Path $html -Title ("Vigil - {0} - {1}" -f $model.metadata.Host, $model.summary.OverallRisk)
     Write-Utf8File -Path (Join-Path $dir "$base`_ExecutiveSummary.md") -Content (ConvertTo-MarkdownSummary $model)
     Write-ConsoleSummary $model
     Write-Host "`nReport re-generated: $html" -ForegroundColor Green
     if (-not $NoOpen) { try { Start-Process $html } catch {} }
 }
 
-# Tests dot-source this file with $global:DTS_SkipMain = $true to load the functions only.
-if (-not $global:DTS_SkipMain) {
+# Tests dot-source this file with $global:VIGIL_SkipMain = $true to load the functions only.
+if (-not $global:VIGIL_SkipMain) {
     if ($ReportFromJson) {
         try { Invoke-ReportOnly -JsonPath $ReportFromJson } catch { Write-Error $_ }
         return
     }
 
     Write-Host '============================================================' -ForegroundColor Green
-    Write-Host "SDEMA IRT : Deep Threat Scan v$ScriptVersion" -ForegroundColor Green
+    Write-Host "Vigil - Host Compromise Assessment v$ScriptVersion" -ForegroundColor Green
     Write-Host '============================================================' -ForegroundColor Green
 
     $script:IsAdmin = Test-IsAdmin
@@ -3622,7 +3729,7 @@ if (-not $global:DTS_SkipMain) {
     Write-Host 'Building reports...' -ForegroundColor Cyan
     $model = New-ReportModel
     $json = ConvertTo-ReportJson $model
-    $base = 'ThreatScan_{0}_{1}' -f $env:COMPUTERNAME, $startTime.ToString('yyyyMMdd_HHmmss')
+    $base = 'Vigil_{0}_{1}' -f $env:COMPUTERNAME, $startTime.ToString('yyyyMMdd_HHmmss')
     $paths = [ordered]@{
         Html     = Join-Path $runDir "$base.html"
         Json     = Join-Path $runDir "$base.json"
@@ -3631,7 +3738,7 @@ if (-not $global:DTS_SkipMain) {
         Summary  = Join-Path $runDir "$base`_ExecutiveSummary.md"
     }
     try { Write-Utf8File -Path $paths.Json -Content $json } catch { Write-Warning "JSON export failed: $($_.Exception.Message)" }
-    try { Write-HtmlReport -Json $json -Path $paths.Html -Title ("Deep Threat Scan - {0} - {1}" -f $env:COMPUTERNAME, $model.summary.OverallRisk) } catch { Write-Warning "HTML report failed: $($_.Exception.Message)" }
+    try { Write-HtmlReport -Json $json -Path $paths.Html -Title ("Vigil - {0} - {1}" -f $env:COMPUTERNAME, $model.summary.OverallRisk) } catch { Write-Warning "HTML report failed: $($_.Exception.Message)" }
     try { Export-FindingsCsv -Model $model -Path $paths.Findings } catch { Write-Warning "Findings CSV failed: $($_.Exception.Message)" }
     if ($script:State.IocMatches.Count -gt 0) {
         try { $script:State.IocMatches | Export-Csv -LiteralPath $paths.IoC -NoTypeInformation -Encoding UTF8 } catch { Write-Warning "IoC CSV failed: $($_.Exception.Message)" }

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Packages IR_DeepThreatScan_v9.0.ps1 into a stand-alone EXE (same packaging as the original v8.6 EXE: PS2EXE).
+    Packages Vigil.ps1 into a stand-alone EXE (same packaging as the original v8.6 EXE: PS2EXE).
 
 .DESCRIPTION
     Run on a Windows build machine. Requires the ps2exe module once:
@@ -26,13 +26,13 @@ if (-not (Get-Command Invoke-ps2exe -ErrorAction SilentlyContinue)) {
     if (-not (Get-Command Invoke-ps2exe -ErrorAction SilentlyContinue)) { throw 'ps2exe module not found. Install it with: Install-Module ps2exe -Scope CurrentUser' }
 }
 
-$src = Join-Path $PSScriptRoot 'IR_DeepThreatScan_v9.0.ps1'
+$src = Join-Path $PSScriptRoot 'Vigil.ps1'
 $null = New-Item -ItemType Directory -Force -Path $OutDir
-$exe = Join-Path $OutDir 'IR_DeepThreatScan_v9.0.exe'
+$exe = Join-Path $OutDir 'Vigil.exe'
 
 Invoke-ps2exe -inputFile $src -outputFile $exe -x64 -requireAdmin `
-    -title 'SDEMA IRT Deep Threat Scan' -description 'Live-response compromise assessment and reporting' `
-    -company 'SDEMA IRT' -product 'Deep Threat Scan' -copyright 'SDEMA IRT' -version $Version
+    -title 'Vigil Host Compromise Assessment' -description 'Live-response compromise assessment and reporting' `
+    -company 'Vigil' -product 'Vigil' -copyright 'Vigil contributors' -version $Version
 
 if ($SignCertThumbprint) {
     $cert = Get-ChildItem Cert:\CurrentUser\My, Cert:\LocalMachine\My | Where-Object { $_.Thumbprint -eq $SignCertThumbprint } | Select-Object -First 1

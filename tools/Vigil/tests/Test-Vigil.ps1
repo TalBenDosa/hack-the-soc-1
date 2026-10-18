@@ -1,14 +1,14 @@
 <#
-    Offline self-tests for IR_DeepThreatScan v9.0 (runs on Windows PowerShell 5.1 or PowerShell 7, incl. Linux/macOS).
+    Offline self-tests for Vigil v9.0 (runs on Windows PowerShell 5.1 or PowerShell 7, incl. Linux/macOS).
     Validates the rule engine, risk scoring, correlation and the full report pipeline using synthetic data.
 
-    Usage:  pwsh -File .\tests\Test-DeepThreatScan.ps1 [-OutDir <folder>]
+    Usage:  pwsh -File .\tests\Test-Vigil.ps1 [-OutDir <folder>]
 #>
-param([string]$OutDir = (Join-Path ([System.IO.Path]::GetTempPath()) 'dts_selftest'))
+param([string]$OutDir = (Join-Path ([System.IO.Path]::GetTempPath()) 'vigil_selftest'))
 
 $ErrorActionPreference = 'Stop'
-$scriptPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'IR_DeepThreatScan_v9.0.ps1'
-$global:DTS_SkipMain = $true
+$scriptPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'Vigil.ps1'
+$global:VIGIL_SkipMain = $true
 $env:COMPUTERNAME = 'LAB-WS01'   # fixed name for the generated sample report (this process only)
 . $scriptPath -NoOpen
 
@@ -107,7 +107,7 @@ Initialize-IocSets
 Assert (@(Test-IpIoc '203.0.113.66').Count -eq 1) 'feed IP matches'
 Assert ($null -ne (Test-DomainIoc 'www.c2.attacker.example')) 'feed domain matches sub-domain'
 Assert ($null -ne (Test-ToolName 'evil-loader.exe')) 'feed tool name matches'
-$txtFeed = Join-Path ([System.IO.Path]::GetTempPath()) 'dts_feed.txt'
+$txtFeed = Join-Path ([System.IO.Path]::GetTempPath()) 'vigil_feed.txt'
 Set-Content -LiteralPath $txtFeed -Value @('# comment', '192.0.2.10', 'evil.example', ('a' * 64))
 Import-IocFeed -Path $txtFeed; Initialize-IocSets
 Assert (@(Test-IpIoc '192.0.2.10').Count -eq 1 -and $script:HashSet.Contains(('A' * 64))) 'TXT feed auto-detects IP and SHA256'
@@ -153,20 +153,20 @@ Assert (@($model.attack | Where-Object { $_.Tactic -eq 'Impact' -and @($_.Techni
 
 $null = New-Item -ItemType Directory -Force -Path $OutDir
 $json = ConvertTo-ReportJson $model
-$jsonPath = Join-Path $OutDir 'ThreatScan_TEST.json'
+$jsonPath = Join-Path $OutDir 'Vigil_TEST.json'
 Write-Utf8File -Path $jsonPath -Content $json
 $re = $json | ConvertFrom-Json
 Assert ($re.findings.Count -eq $model.findings.Count) 'JSON round-trip keeps all findings'
 Assert ($json -notmatch '"value":\s*\[') 'no PS 5.1 {value,Count} array wrapping'
-$htmlPath = Join-Path $OutDir 'ThreatScan_TEST.html'
-Write-HtmlReport -Json $json -Path $htmlPath -Title 'Deep Threat Scan - LAB-WS01 - Critical'
+$htmlPath = Join-Path $OutDir 'Vigil_TEST.html'
+Write-HtmlReport -Json $json -Path $htmlPath -Title 'Vigil - LAB-WS01 - Critical'
 $html = Get-Content -LiteralPath $htmlPath -Raw
 Assert ($html -notmatch '<script>alert') 'HTML-injection payload from host data is neutralised'
 Assert ($html -notmatch 'https?://(www\.gstatic|cdn|ajax)') 'no external CDN dependencies'
 Assert ($html -match '"OverallRisk":\s*"Critical"') 'report data embedded'
 Assert ($html.Contains(([string][char]92) + 'u003cscript') ) 'angle brackets in data are JSON-escaped'
-Write-Utf8File -Path (Join-Path $OutDir 'ThreatScan_TEST_ExecutiveSummary.md') -Content (ConvertTo-MarkdownSummary $model)
-Export-FindingsCsv -Model $model -Path (Join-Path $OutDir 'ThreatScan_TEST_Findings.csv')
+Write-Utf8File -Path (Join-Path $OutDir 'Vigil_TEST_ExecutiveSummary.md') -Content (ConvertTo-MarkdownSummary $model)
+Export-FindingsCsv -Model $model -Path (Join-Path $OutDir 'Vigil_TEST_Findings.csv')
 $md = ConvertTo-MarkdownSummary $re
 Assert ($md -match 'Overall risk \| \*\*Critical\*\*') 'Markdown summary renders from re-loaded JSON (-ReportFromJson path)'
 
